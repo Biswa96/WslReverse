@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\lxss]
+"PrintSysLevel"=dword:1
+"PrintLogLevel"=dword:1
+"KdBreakPointErrorLevel"=dword:1
+"TraceloggingLevel"=dword:1
+"KdBreakOnSyscallFailures"=dword:1
+"TraceLastSyscall"=dword:1
+"WalkPicoUserStack"=dword:1
+"RootAdssbusAccess"=dword:1
+"DrvFsFallback"=dword:1
+"OvFsUnstableInode"=dword:1
+"DrvFsAllowForceCaseSensitivity"=dword:1
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager]
+"DisableMixedIntegrityLaunch"=dword:0
+"DistributionFlags"=dword:7
+"Start"=dword:2
+;END-20#
