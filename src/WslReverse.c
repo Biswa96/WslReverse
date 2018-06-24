@@ -45,25 +45,21 @@ int wmain(int wargc, wchar_t* wargv[]) {
 
         case 0: {
             wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
-            usage();
+            Usage();
             break;
         }
 
         case 'd': {
-            LPWSTR DistroIdString;
             result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
             Log(result, L"GetDistributionId");
-            StringFromCLSID(&DistroId, &DistroIdString);
-            wprintf(L"Distribution ID: %ls\n", DistroIdString);
+            PrintGuid(&DistroId);
             break;
         }
 
         case 'G': {
-            LPWSTR DistroIdString;
             result = (*wslSession)->GetDefaultDistribution(wslSession, &DistroId);
             Log(result, L"GetDefaultDistribution");
-            StringFromCLSID(&DistroId, &DistroIdString);
-            wprintf(L"Distribution ID: %ls\n", DistroIdString);
+            PrintGuid(&DistroId);
             break;
         }
 
@@ -90,7 +86,7 @@ int wmain(int wargc, wchar_t* wargv[]) {
         }
 
         case 'h': {
-            usage();
+            Usage();
             break;
         }
 
