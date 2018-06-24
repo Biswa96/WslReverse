@@ -1,11 +1,9 @@
 # WSL_Reverse
-Reverse engineering WSL
-
-Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss). 
+Reverse engineering of Windows Subsystem for Linux. Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss). 
 
 ## Usage
 
-This project only shows the hidden COM methods which may change in future Windows version. Use Windows Insider builds or download ISO from https://uup.rg-adguard.net/. Check out the Others folder. e.g. [Lxss_Service.REG](Others/Lxss_Service.REG) file unleashes the hidden beast. 
+This project only shows the hidden COM methods which may change in future Windows version. Use Windows Insider builds or download ISO from https://uup.rg-adguard.net/. The current COM vtable, used in this project, is according with RS5 Insider version. Here are the options of WslReverse: 
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
@@ -20,6 +18,11 @@ Options:
     -s, --set-config   [distribution name]      Set configuration for distribution.
     -u, --uninstall    [distribution name]      Uninstall distribution.
 ```
+
+Check out the Others folder to unleashes the hidden beast. Here are the list of files in Other folders: 
+
+* [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
+* [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. 
 
 ## License 
 
