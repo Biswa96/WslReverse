@@ -1,4 +1,4 @@
-#include "..\include\WslReverse.h"
+#include "WslReverse.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 

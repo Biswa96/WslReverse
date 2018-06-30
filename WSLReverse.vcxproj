@@ -11,15 +11,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\WslReverse.h" />
-    <ClInclude Include="include\wgetopt.h" />
-    <ClInclude Include="include\WslInstance.h" />
-    <ClInclude Include="include\WslSession.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\functions.c" />
     <ClCompile Include="src\wgetopt.c" />
     <ClCompile Include="src\WslReverse.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\wgetopt.h" />
+    <ClInclude Include="src\WslInstance.h" />
+    <ClInclude Include="src\WslReverse.h" />
+    <ClInclude Include="src\WslSession.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

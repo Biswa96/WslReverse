@@ -55,7 +55,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define __INSIDE_CYGWIN__
-#include "..\include\wgetopt.h"
+#include "wgetopt.h"
 
 #define    REPLACE_GETOPT        /* use this getopt as the system getopt(3) */
 
