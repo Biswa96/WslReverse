@@ -71,29 +71,16 @@ struct _WslSession {
 
     /**
     * PVOID ObjectStublessClient6;
-    * Set always be TRUE othewise E_INVALIDARG error
-    * State always be ONE means installed
+    * If DistroId is NULL it will be default distribution
+    * Use IServerSecurity interface and terminates any process
     **/
-    HRESULT(__stdcall *SetDistributionState) (
+    HRESULT(__stdcall *TerminateDistribuiton) (
         _In_ pWslSession* wslSession,
-        _In_ GUID* DistroId,
-        _In_ BOOL Set,
-        _In_ PULONG State
+        _In_opt_ GUID* DistroId
         );
 
     /**
     * PVOID ObjectStublessClient7;
-    * Query State registry value
-    * Fails if State is not present
-    **/
-    HRESULT(__stdcall *QueryDistributionState) (
-        _In_ pWslSession* wslSession,
-        _In_ GUID* DistroId,
-        _Out_ LPDWORD State
-        );
-
-    /**
-    * PVOID ObjectStublessClient8;
     * Query GUID with already registered in Lxss key
     * Write State registry value as FOUR means uninstalling
     **/
@@ -103,7 +90,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient9;
+    * PVOID ObjectStublessClient8;
     * Flags should be less than or equal to SEVEN
     * Writes Environment variables iff EnvironmentCount present
     **/
@@ -118,7 +105,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient10;
+    * PVOID ObjectStublessClient9;
     * Enumerate all value in Lxss\DistroId registry key
     * Query CurrentControlSet\services\LxssManager\DistributionFlags
     **/
@@ -136,7 +123,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient11;
+    * PVOID ObjectStublessClient10;
     * Query DefaultDistribution registry string
     * Delete that if BasePath doesn't exist
     **/
@@ -146,7 +133,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient12;
+    * PVOID ObjectStublessClient11;
     * Query State registry value should be ONE
     * Write DefaultDistribution registry with provided GUID
     **/
@@ -156,7 +143,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient13;
+    * PVOID ObjectStublessClient12;
     * Query State registry value should be ONE
     * Returns GUID list in 16 bytes offsets
     **/
@@ -167,7 +154,7 @@ struct _WslSession {
         _Out_ GUID** DistroIdList
         );
 
-    //PVOID ObjectStublessClient14;
+    //PVOID ObjectStublessClient13;
     HRESULT(__stdcall *CreateLxProcess_s) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
@@ -175,7 +162,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient15;
+    * PVOID ObjectStublessClient14;
     * Query Distribution Configuration and Version is TWO for newer installation
     * Write State registry to FIVE means upgrading
     **/
@@ -187,7 +174,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient16;
+    * PVOID ObjectStublessClient15;
     * Query Distribution Configuration and Write State registry to ONE means installed
     * Write Version registry to TWO for newer installation
     **/

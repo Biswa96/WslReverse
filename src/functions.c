@@ -27,6 +27,7 @@ void Usage() {
         "  -r, --run          [distribution name]      Run a Linux binary (incomplete feature).\n"
         "  -S, --set-default  [distribution name]      Set default distribution.\n"
         "  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
+        "  -t, --terminate    [distribution name]      Terminate running distribution.\n"
         "  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
         "\n"
     );

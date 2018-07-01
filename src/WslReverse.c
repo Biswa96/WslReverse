@@ -26,6 +26,7 @@ int wmain(int wargc, wchar_t* wargv[]) {
         { L"run",           required_argument,   0,  'r' },
         { L"set-default",   required_argument,   0,  'S' },
         { L"set-config",    required_argument,   0,  's' },
+        { L"terminate",     required_argument,   0,  't' },
         { L"uninstall",     required_argument,   0,  'u' },
         { 0,                no_argument,         0,   0  },
     };
@@ -39,7 +40,7 @@ int wmain(int wargc, wchar_t* wargv[]) {
         return result;
     }
 
-    while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:r:S:s:u:", OptionTable, 0)) != -1) {
+    while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:r:S:s:t:u:", OptionTable, 0)) != -1) {
 
         switch (c) {
 
@@ -130,6 +131,14 @@ int wmain(int wargc, wchar_t* wargv[]) {
             result = (*wslSession)->ConfigureDistribution(wslSession, &DistroId, KernelCommandLine,
                 RootUser, ARRAY_SIZE(DefaultEnvironment), DefaultEnvironment, WSL_DISTRIBUTION_FLAGS_DEFAULT);
             Log(result, L"ConfigureDistribution");
+            break;
+        }
+
+        case 't': {
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            Log(result, L"GetDistributionId");
+            result = (*wslSession)->TerminateDistribuiton(wslSession, &DistroId);
+            Log(result, L"TerminateDistribution");
             break;
         }
 
