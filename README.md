@@ -16,6 +16,7 @@ Options:
     -r, --run          [distribution name]      run a Linux binary (incomplete feature).
     -S, --set-default  [distribution name]      Set default distribution.
     -s, --set-config   [distribution name]      Set configuration for distribution.
+    -t, --terminate    [distribution name]      Terminate running distribution.
     -u, --uninstall    [distribution name]      Uninstall distribution.
 ```
 
@@ -23,6 +24,7 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 
 * [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
 * [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. 
+* [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade with `wslconfig /upgrade` command. 
 
 ## License 
 
