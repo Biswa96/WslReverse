@@ -155,7 +155,7 @@ struct _WslSession {
         );
 
     //PVOID ObjectStublessClient13;
-    HRESULT(__stdcall *CreateLxProcess_s) (
+    HRESULT(__stdcall *CreateLxProcess) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_ LPCSTR unknown

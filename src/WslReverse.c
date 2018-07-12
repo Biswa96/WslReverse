@@ -2,8 +2,12 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
-int wmain(int wargc, wchar_t* wargv[]) {
-    
+int main() {
+
+    int wargc;
+    wchar_t** wargv;
+    wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+
     if (wargc < 2) {
         wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
         exit(EXIT_FAILURE);

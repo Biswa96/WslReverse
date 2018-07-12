@@ -39,7 +39,7 @@ struct _WslInstance {
     * InstanceID matches with tmpfs folder name
     * But differs when CreateInstance is called
     **/
-    HRESULT(__stdcall *GetId) (
+    HRESULT(__stdcall *GetInstanceId) (
         _In_ pWslInstance* wslInstance,
         _Out_ GUID* InstanceId
         );
@@ -48,7 +48,7 @@ struct _WslInstance {
     * PVOID ObjectStublessClient5;
     * Get only current initiated Distribution ID
     **/
-    HRESULT(__stdcall *GetDistroId) (
+    HRESULT(__stdcall *GetDistributionId) (
         _In_ pWslInstance* wslInstance,
         _Out_ GUID* DistroId
         );
