@@ -16,4 +16,5 @@ int main() {
     ExtractResource(L"#2", L"init");
     ExtractResource(L"#3", L"bsdtar");
     ExtractResource(L"#4", L"init.cpio.gz");
+    return 0;
 }

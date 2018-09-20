@@ -37,4 +37,5 @@ int main(int argc, char* argv[]) {
         printf("CreateNamedPipe Error: 0x%lx\n", GetLastError());
         exit(1);
     }
+    return 0;
 }
