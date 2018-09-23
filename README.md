@@ -1,5 +1,10 @@
 # WSL_Reverse
+
 Reverse engineering of Windows Subsystem for Linux. Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss). 
+
+## How to build
+
+Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Or go to the folder in terminal run `mingw32-make` command for mingw-w64/msys2/cygwin. 
 
 ## Usage
 

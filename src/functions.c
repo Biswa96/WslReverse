@@ -1,46 +1,57 @@
 #include <Windows.h>
 #include <stdio.h>
 
-void Log(HRESULT result, PCWSTR function) {
+#define MsgSize 0x400
 
-    if (result == 0) {
-        wprintf(L"%ls success\n", function);
+void Log(HRESULT Result, PWSTR Function)
+{
+    if (Result == 0)
+    {
+        wprintf(L"%ls Success\n", Function);
     }
-    else {
-        wprintf(L"%ls failed error: %d\n", function, (result & 0xFFFF));
-        exit(1);
+    else
+    {
+        wchar_t MsgBuffer[MsgSize];
+        memset(MsgBuffer, 0, MsgSize * sizeof(wchar_t));
+        FormatMessageW(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, Result, MsgSize, MsgBuffer, MsgSize, NULL);
+        wprintf(L"%ls Error: %ld\n%ls\n", Function, (Result & 0xFFFF), MsgBuffer);
+        exit(EXIT_FAILURE);
     }
 }
 
 void Usage() {
-    printf(
-        "\nWslReverse -- (c) Copyright 2018 Biswapriyo Nath\n"
-        "Licensed under GNU Public License version 3 or higher\n\n"
-        "Use hidden COM interface of Windows Subsystem for Linux for fun\n"
-        "Usage: WslReverse.exe [-] [option] [argument]\n\n"
-        "Options:\n"
-        "  -d, --get-id       [distribution name]      Get distribution ID.\n"
-        "  -G, --get-default                           Get default distribution ID.\n"
-        "  -g, --get-config   [distribution name]      Get distribution configuration.\n"
-        "  -h, --help                                  Show list of options.\n"
-        "  -i, --install      [distribution name]      Install distribution (run as administrator).\n"
-        "  -r, --run          [distribution name]      Run a Linux binary (incomplete feature).\n"
-        "  -S, --set-default  [distribution name]      Set default distribution.\n"
-        "  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
-        "  -t, --terminate    [distribution name]      Terminate running distribution.\n"
-        "  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
-        "\n"
+    wprintf(
+        L"\nWslReverse -- (c) Copyright 2018 Biswapriyo Nath\n"
+        L"Licensed under GNU Public License version 3 or higher\n\n"
+        L"Use hidden COM interface of Windows Subsystem for Linux for fun\n"
+        L"Usage: WslReverse.exe [-] [option] [argument]\n\n"
+        L"Options:\n"
+        L"  -d, --get-id       [distribution name]      Get distribution ID.\n"
+        L"  -G, --get-default                           Get default distribution ID.\n"
+        L"  -g, --get-config   [distribution name]      Get distribution configuration.\n"
+        L"  -h, --help                                  Show list of options.\n"
+        L"  -i, --install      [distribution name]      Install distribution (run as administrator).\n"
+        L"  -r, --run          [distribution name]      Run a Linux binary (incomplete feature).\n"
+        L"  -S, --set-default  [distribution name]      Set default distribution.\n"
+        L"  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
+        L"  -t, --terminate    [distribution name]      Terminate running distribution.\n"
+        L"  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
+        L"\n"
     );
-    exit(1);
+    return;
 }
+
+#define GUID_STRING 40
 
 void PrintGuid(GUID* guid) {
 
-    wchar_t szGuid[40];
+    wchar_t szGuid[GUID_STRING];
 
-    swprintf_s(
+    swprintf(
         szGuid,
-        40,
+        GUID_STRING,
         L"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
         guid->Data1, guid->Data2, guid->Data3,
         guid->Data4[0], guid->Data4[1], guid->Data4[2],
@@ -48,5 +59,5 @@ void PrintGuid(GUID* guid) {
         guid->Data4[6], guid->Data4[7]
     );
 
-    wprintf(L"%s\n", szGuid);
+    wprintf(L"%ls\n", szGuid);
 }

@@ -8,6 +8,6 @@
 #include "WslInstance.h"
 #include "wgetopt.h"
 
-void Log(HRESULT result, PCWSTR function);
+void Log(HRESULT Result, PWSTR Function);
 void PrintGuid(GUID* guid);
 void Usage();

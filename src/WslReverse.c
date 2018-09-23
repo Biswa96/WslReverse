@@ -37,12 +37,8 @@ int main() {
 
     CoInitializeEx(0, COINIT_MULTITHREADED);
     CoInitializeSecurity(0, -1, 0, 0, RPC_C_AUTHN_LEVEL_DEFAULT, SecurityDelegation, 0, EOAC_STATIC_CLOAKING, 0);
-    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (void**)&wslSession);
-
-    if (!SUCCEEDED(result)) {
-        wprintf(L"CoCreateInstacne Failed\n");
-        return result;
-    }
+    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (PVOID*)&wslSession);
+    Log(result, L"CoCreateInstance");
 
     while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:r:S:s:t:u:", OptionTable, 0)) != -1) {
 
@@ -55,7 +51,7 @@ int main() {
         }
 
         case 'd': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             PrintGuid(&DistroId);
             break;
@@ -74,7 +70,7 @@ int main() {
             LPSTR KernelCommandLine;
             LPSTR* DefaultEnvironment = 0;
 
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->GetDistributionConfiguration(
                 wslSession, &DistroId, &DistributionName, &Version, &BasePath,
@@ -96,26 +92,35 @@ int main() {
         }
 
         case 'i': {
-            wchar_t TarGzFilePath[MAX_PATH], BasePath[MAX_PATH];
-            wprintf(L"Enter .tar.gz file path (without quote): "); wscanf(L"%ls", TarGzFilePath);
-            wprintf(L"Enter folder path where to install (without quote): "); wscanf(L"%ls", BasePath);
+            wchar_t TarFile[MAX_PATH], BasePath[MAX_PATH];
+            wprintf(L"Enter full path of .tar.gz file (without quote): ");
+            wscanf(L"%ls", TarFile);
+
+            HANDLE hTarFile = CreateFileW(
+                TarFile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
+                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+            wprintf(L"Enter folder path where to install (without quote): ");
+            wscanf(L"%ls", BasePath);
+
             CoCreateGuid(&DistroId);
-            result = (*wslSession)->RegisterDistribution(wslSession, optarg, ToBeInstall, TarGzFilePath, BasePath, &DistroId);
-            wprintf(L"Installing...\n");
+            result = (*wslSession)->RegisterDistribution(
+                wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
             Log(result, L"RegisterDistribution");
+            wprintf(L"Installing...\n");
             break;
         }
 
         case 'r': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
-            result = (*wslSession)->CreateInstance(wslSession, &DistroId, 1, &IID_ILxssInstance, (void**)&wslInstance);
+            result = (*wslSession)->CreateInstance(wslSession, &DistroId, Installed, &IID_ILxssInstance, (void**)&wslInstance);
             Log(result, L"CreateInstance");
             break;
         }
 
         case 'S': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->SetDefaultDistribution(wslSession, &DistroId);
             Log(result, L"SetDefaultDistribution");
@@ -123,7 +128,7 @@ int main() {
         }
 
         case 's': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             LPCSTR KernelCommandLine = "BOOT_IMAGE=/kernel init=/init ro";
             LPCSTR DefaultEnvironment[4] = { 
@@ -139,15 +144,15 @@ int main() {
         }
 
         case 't': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
-            result = (*wslSession)->TerminateDistribuiton(wslSession, &DistroId);
+            result = (*wslSession)->TerminateDistribution(wslSession, &DistroId);
             Log(result, L"TerminateDistribution");
             break;
         }
 
         case 'u': {
-            result = (*wslSession)->GetDistributionId(wslSession, optarg, 1, &DistroId);
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->UnregisterDistribution(wslSession, &DistroId);
             Log(result, L"UnregisterDistribution");
@@ -161,5 +166,4 @@ int main() {
     }
 
     return 0;
-
 }

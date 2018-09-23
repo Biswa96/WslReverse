@@ -50,10 +50,10 @@ struct _WslSession {
     **/
     HRESULT(__stdcall *RegisterDistribution) (
         _In_ pWslSession* wslSession,
-        _In_ LPWSTR DistributionName,
+        _In_ PWSTR DistributionName,
         _In_ ULONG State,
-        _In_ LPWSTR TarGzFilePath,
-        _In_ LPWSTR BasePath,
+        _In_ HANDLE hTarGzFile,
+        _In_ PWSTR BasePath,
         _In_ GUID* DistroId
         );
 
@@ -64,7 +64,7 @@ struct _WslSession {
     **/
     HRESULT(__stdcall *GetDistributionId) (
         _In_ pWslSession* wslSession,
-        _In_ LPWSTR DistroName,
+        _In_ PWSTR DistroName,
         _In_ ULONG State,
         _Out_ GUID* DistroId
         );
@@ -74,7 +74,7 @@ struct _WslSession {
     * If DistroId is NULL it will be default distribution
     * Use IServerSecurity interface and terminates any process
     **/
-    HRESULT(__stdcall *TerminateDistribuiton) (
+    HRESULT(__stdcall *TerminateDistribution) (
         _In_ pWslSession* wslSession,
         _In_opt_ GUID* DistroId
         );
