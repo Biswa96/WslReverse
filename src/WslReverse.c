@@ -1,4 +1,8 @@
-#include "WslReverse.h"
+#define _CRT_SECURE_NO_WARNINGS
+#include "Functions.h"
+#include "WslSession.h"
+#include "CreateLxProcess.h"
+#include "wgetopt.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
@@ -15,8 +19,8 @@ int main() {
 
     /*Declare variables*/
     int c;
-    HRESULT result;
-    GUID DistroId;
+    HRESULT result = 0;
+    GUID DistroId = { 0 };
     pWslSession* wslSession;
     pWslInstance* wslInstance;
 
@@ -114,8 +118,10 @@ int main() {
         case 'r': {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
-            result = (*wslSession)->CreateInstance(wslSession, &DistroId, Installed, &IID_ILxssInstance, (void**)&wslInstance);
+            result = (*wslSession)->CreateInstance(wslSession, &DistroId, TRUE, &IID_ILxssInstance, (PVOID*)&wslInstance);
             Log(result, L"CreateInstance");
+            result = CreateLxProcess(wslInstance);
+            Log(result, L"CreateLxProcess");
             break;
         }
 

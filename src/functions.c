@@ -1,15 +1,10 @@
-#include <Windows.h>
-#include <stdio.h>
+#include "Functions.h"
 
 #define MsgSize 0x400
 
 void Log(HRESULT Result, PWSTR Function)
 {
-    if (Result == 0)
-    {
-        wprintf(L"%ls Success\n", Function);
-    }
-    else
+    if (Result != 0)
     {
         wchar_t MsgBuffer[MsgSize];
         memset(MsgBuffer, 0, MsgSize * sizeof(wchar_t));
@@ -33,7 +28,7 @@ void Usage() {
         L"  -g, --get-config   [distribution name]      Get distribution configuration.\n"
         L"  -h, --help                                  Show list of options.\n"
         L"  -i, --install      [distribution name]      Install distribution (run as administrator).\n"
-        L"  -r, --run          [distribution name]      Run a Linux binary (incomplete feature).\n"
+        L"  -r, --run          [distribution name]      Run a Linux binary.\n"
         L"  -S, --set-default  [distribution name]      Set default distribution.\n"
         L"  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
         L"  -t, --terminate    [distribution name]      Terminate running distribution.\n"

@@ -11,14 +11,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\CreateLxProcess.c" />
     <ClCompile Include="src\Functions.c" />
     <ClCompile Include="src\wgetopt.c" />
     <ClCompile Include="src\WslReverse.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\CreateLxProcess.h" />
+    <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\wgetopt.h" />
     <ClInclude Include="src\WslInstance.h" />
-    <ClInclude Include="src\WslReverse.h" />
     <ClInclude Include="src\WslSession.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

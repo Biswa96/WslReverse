@@ -1,20 +1,13 @@
 #pragma once
 #include <Windows.h>
 
-typedef struct _LXSS_STD_HANDLE {
-    HANDLE Handle;
-    BOOLEAN Pipe;
-} LXSS_STD_HANDLE, *PLXSS_STD_HANDLE;
-
 typedef struct _LXSS_STD_HANDLES {
-    LXSS_STD_HANDLE StdIn;
-    LXSS_STD_HANDLE StdOut;
-    LXSS_STD_HANDLE StdErr;
+    ULONG unknown[6];
+    HANDLE hStdInput;
+    HANDLE hStdOutput;
+    HANDLE hStdError;
+    HANDLE hConout;
 } LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
-
-typedef struct _LXSS_CONSOLE_DATA {
-    ULONG ConsoleHandle;
-} LXSS_CONSOLE_DATA, *PLXSS_CONSOLE_DATA;
 
 typedef struct _WslInstance WslInstance, *pWslInstance;
 
@@ -54,7 +47,21 @@ struct _WslInstance {
         );
 
     //PVOID ObjectStublessClient6;
-    HRESULT(__stdcall *CreateLxProcess) ( /*unknown*/);
+    HRESULT(__stdcall *CreateLxProcess) (
+        _In_ pWslInstance* This,
+        _In_opt_ PSTR CommandLine,
+        _In_opt_ ULONG ArgumentCount,
+        _In_opt_ PSTR* Arguments,
+        _In_opt_ PWSTR CurrentDirectory,
+        _In_opt_ PWSTR Environment,
+        _In_opt_ PWSTR EnvSeparators,
+        _In_opt_ ULONG EnvLength,
+        _In_ PLXSS_STD_HANDLES StdHandles,
+        _In_ ULONG ConsoleHandle,
+        _In_ PWSTR LinuxUserName,
+        _Out_ PHANDLE ProcessHandle,
+        _Out_ PHANDLE ServerHandle
+        );
 
     /**
     * PVOID ObjectStublessClient7;

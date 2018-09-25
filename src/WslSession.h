@@ -37,7 +37,7 @@ struct _WslSession {
     HRESULT(__stdcall *CreateInstance) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
-        _In_ ULONG Create,
+        _In_ ULONG CreateWithThrow,
         _In_ const GUID* ILxssInstance,
         _Out_ PVOID wslInstance
         );
