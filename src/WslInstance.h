@@ -1,12 +1,17 @@
-#pragma once
+#ifndef WSLINSTANCE_H
+#define WSLINSTANCE_H
+
 #include <Windows.h>
 
+typedef struct _LXSS_STD_HANDLE {
+    ULONG Handle;
+    ULONG Pipe;
+} LXSS_STD_HANDLE, *PLXSS_STD_HANDLE;
+
 typedef struct _LXSS_STD_HANDLES {
-    ULONG unknown[6];
-    HANDLE hStdInput;
-    HANDLE hStdOutput;
-    HANDLE hStdError;
-    HANDLE hConout;
+    LXSS_STD_HANDLE StdIn;
+    LXSS_STD_HANDLE StdOut;
+    LXSS_STD_HANDLE StdErr;
 } LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
 
 typedef struct _WslInstance WslInstance, *pWslInstance;
@@ -58,7 +63,7 @@ struct _WslInstance {
         _In_opt_ ULONG EnvLength,
         _In_ PLXSS_STD_HANDLES StdHandles,
         _In_ ULONG ConsoleHandle,
-        _In_ PWSTR LinuxUserName,
+        _In_opt_ PWSTR LinuxUserName,
         _Out_ PHANDLE ProcessHandle,
         _Out_ PHANDLE ServerHandle
         );
@@ -75,3 +80,5 @@ struct _WslInstance {
         );
 
 };
+
+#endif //WSLINSTANCE_H

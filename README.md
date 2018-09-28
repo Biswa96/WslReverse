@@ -1,6 +1,6 @@
 # WSL_Reverse
 
-Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru **Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss)**. This project is just a concept not a fully developed program and should be used for testing purposes. 
+Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru **Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss)**. This project is just a concept, not a fully developed program and should be used for testing purposes. 
 
 ## How to build
 
@@ -28,7 +28,7 @@ Options:
 Check out the Others folder to unleashes the hidden beast. Here are the list of files in Other folders: 
 
 * [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
-* [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. 
+* [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` provided separately. 
 * [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade with `wslconfig /upgrade` command. 
 
 ## License 

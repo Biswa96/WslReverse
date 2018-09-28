@@ -3,7 +3,7 @@
 NAME := WslReverse
 BINDIR = ../bin
 CC = gcc
-CFLAGS := -ggdb -m64 -Wall
+CFLAGS := -ggdb -m64 -Wall -Wextra
 LIBS := -lOle32
 SOURCES := $(wildcard *.c)
 OBJECTS := $(SOURCES:.c=.obj)

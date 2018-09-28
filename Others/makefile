@@ -1,7 +1,7 @@
 #Makefile for simple one file sources
 BINDIR = ../bin
 CC = gcc
-CFLAGS := -ggdb -m64 -Wall
+CFLAGS := -ggdb -m64 -Wall -Wextra
 
 exe:
 	$(CC) $(CFLAGS) -o $(BINDIR)/ExtractResource ExtractResource.c
