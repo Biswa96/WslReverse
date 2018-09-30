@@ -1,14 +1,18 @@
 Windows Registry Editor Version 5.00
 
+;NTSTATUS LxpInstanceLoadSettingsFromRegistry()
+;RTL_QUERY_REGISTRY_TABLE QueryTable[11]
+;RtlQueryRegistryValuesEx(RTL_REGISTRY_SERVICES, L"lxss", QueryTable, NULL, NULL);
+
 [HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\lxss]
-"PrintSysLevel"=dword:1
-"PrintLogLevel"=dword:1
+"PrintSysLevel"=dword:5
+"PrintLogLevel"=dword:5
 "KdBreakPointErrorLevel"=dword:1
-"TraceloggingLevel"=dword:1
+"TraceloggingLevel"=dword:5
 "KdBreakOnSyscallFailures"=dword:1
 "TraceLastSyscall"=dword:1
 "WalkPicoUserStack"=dword:1
-"RootAdssbusAccess"=dword:1
+"RootLxBusAccess"=dword:1
 "DrvFsFallback"=dword:1
 "OvFsUnstableInode"=dword:1
 "DrvFsAllowForceCaseSensitivity"=dword:1
@@ -17,4 +21,8 @@ Windows Registry Editor Version 5.00
 "DisableMixedIntegrityLaunch"=dword:0
 "DistributionFlags"=dword:7
 "Start"=dword:2
-;END-20#
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Lxss]
+"EnableVpnDetection"=dword:1
+
+;END#

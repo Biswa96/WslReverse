@@ -3,6 +3,7 @@
 #include "WslSession.h"
 #include "CreateLxProcess.h"
 #include "wgetopt.h"
+#include <stdio.h>
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 

@@ -1,4 +1,5 @@
 #include "Functions.h"
+#include <stdio.h>
 
 #define MsgSize 0x400
 
