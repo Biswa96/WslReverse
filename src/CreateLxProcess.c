@@ -21,6 +21,13 @@
 #define IOCTL_ADSS_IPC_SERVER_WAIT_FOR_CONNECTION \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS) //0x220033u
 
+// Forward Declarations
+void ConsolePid(HANDLE ConsoleHandle);
+
+// Disable "nonstandard extension used" warning
+#pragma warning(push)
+#pragma warning(disable: 4204)
+
 void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
 {
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
@@ -91,6 +98,8 @@ void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
     CloseHandle(ProcInfo.hThread);
 }
 
+#pragma warning(pop)
+
 void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PULONG OutputMode)
 {
 
@@ -144,17 +153,21 @@ HRESULT CreateLxProcess(pWslInstance* wslInstance)
     HANDLE FileHandle = CreateFileW(L"Alohomora.txt",
         GENERIC_ALL, FILE_READ_ACCESS | FILE_WRITE_ACCESS,
         NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    StdHandles.StdIn.Handle = FileHandle;
+    StdHandles.StdIn.Handle = HandleToULong(FileHandle);
     StdHandles.StdIn.Pipe = TRUE;
-    StdHandles.StdOut.Handle = FileHandle;
+    StdHandles.StdOut.Handle = HandleToULong(FileHandle);
     StdHandles.StdOut.Pipe = TRUE;
-    StdHandles.StdErr.Handle = FileHandle;
+    StdHandles.StdErr.Handle = HandleToULong(FileHandle);
     StdHandles.StdErr.Pipe = TRUE;
 #endif
 
     // Console Window handle of current process (if any)
-    ULONG ConsoleHandle = PtrToUlong(NtCurrentTeb()->
-        ProcessEnvironmentBlock->ProcessParameters->Reserved2[0]);
+    HANDLE ConsoleHandle = NtCurrentTeb()->
+        ProcessEnvironmentBlock->ProcessParameters->Reserved2[0];
+
+#if defined (_DEBUG) || defined (DEBUG)
+    ConsolePid(ConsoleHandle);
+#endif
 
     PSTR Args[] = {"-bash"};
 
@@ -168,7 +181,7 @@ HRESULT CreateLxProcess(pWslInstance* wslInstance)
         NULL,
         0,
         &StdHandles,
-        ConsoleHandle,
+        HandleToULong(ConsoleHandle),
         L"root",
         &ProcessHandle,
         &ServerHandle);

@@ -4,7 +4,7 @@ NAME := WslReverse
 BINDIR = ../bin
 CC = gcc
 CFLAGS := -ggdb -m64 -Wall -Wextra
-LIBS := -lOle32
+LIBS := -lOle32 -lNtdll
 SOURCES := $(wildcard *.c)
 OBJECTS := $(SOURCES:.c=.obj)
 BINS := $(patsubst %.obj,$(BINDIR)/%.obj,$(OBJECTS))

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WSLSESSION_H
+#define WSLSESSION_H
+
 #include <Windows.h>
 
 const GUID CLSID_LxssUserSession = { 0x4F476546, 0xB412, 0x4579,{ 0xB6, 0x4C, 0x12, 0x3D, 0xF3, 0x31, 0xE3, 0xD6 } };
@@ -33,13 +35,17 @@ struct _WslSession {
     PVOID AddRef;
     PVOID Release;
 
-    //PVOID ObjectStublessClient3;
-    HRESULT(__stdcall *CreateInstance) (
+    /**
+    * PVOID ObjectStublessClient3;
+    * Create new LxssInstance or get the running one
+    * If no DistroId is present get default one
+    **/
+    HRESULT(STDMETHODCALLTYPE *CreateInstance) (
         _In_ pWslSession* wslSession,
-        _In_ GUID* DistroId,
+        _In_opt_ GUID* DistroId,
         _In_ ULONG CreateWithThrow,
         _In_ const GUID* ILxssInstance,
-        _Out_ PVOID wslInstance
+        _Out_ PVOID* wslInstance
         );
 
     /**
@@ -48,7 +54,7 @@ struct _WslSession {
     * Run as administrator otherwise E_ACCESSDENIED error
     * Version Must be TWO for newer installation
     **/
-    HRESULT(__stdcall *RegisterDistribution) (
+    HRESULT(STDMETHODCALLTYPE *RegisterDistribution) (
         _In_ pWslSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
@@ -62,7 +68,7 @@ struct _WslSession {
     * Query State registry value in Lxss registry key
     * Allows only if that value is ONE means installed
     **/
-    HRESULT(__stdcall *GetDistributionId) (
+    HRESULT(STDMETHODCALLTYPE *GetDistributionId) (
         _In_ pWslSession* wslSession,
         _In_ PWSTR DistroName,
         _In_ ULONG State,
@@ -74,7 +80,7 @@ struct _WslSession {
     * If DistroId is NULL it will be default distribution
     * Use IServerSecurity interface and terminates any process
     **/
-    HRESULT(__stdcall *TerminateDistribution) (
+    HRESULT(STDMETHODCALLTYPE *TerminateDistribution) (
         _In_ pWslSession* wslSession,
         _In_opt_ GUID* DistroId
         );
@@ -84,7 +90,7 @@ struct _WslSession {
     * Query GUID with already registered in Lxss key
     * Write State registry value as FOUR means uninstalling
     **/
-    HRESULT(__stdcall *UnregisterDistribution) (
+    HRESULT(STDMETHODCALLTYPE *UnregisterDistribution) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId
         );
@@ -94,7 +100,7 @@ struct _WslSession {
     * Flags should be less than or equal to SEVEN
     * Writes Environment variables iff EnvironmentCount present
     **/
-    HRESULT(__stdcall *ConfigureDistribution) (
+    HRESULT(STDMETHODCALLTYPE *ConfigureDistribution) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_opt_ LPCSTR KernelCommandLine,
@@ -109,7 +115,7 @@ struct _WslSession {
     * Enumerate all value in Lxss\DistroId registry key
     * Query CurrentControlSet\services\LxssManager\DistributionFlags
     **/
-    HRESULT(__stdcall *GetDistributionConfiguration) (
+    HRESULT(STDMETHODCALLTYPE *GetDistributionConfiguration) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _Out_ LPWSTR* DistributionName,
@@ -127,7 +133,7 @@ struct _WslSession {
     * Query DefaultDistribution registry string
     * Delete that if BasePath doesn't exist
     **/
-    HRESULT(__stdcall *GetDefaultDistribution) (
+    HRESULT(STDMETHODCALLTYPE *GetDefaultDistribution) (
         _In_ pWslSession* wslSession,
         _Out_ GUID* DistroId
         );
@@ -137,7 +143,7 @@ struct _WslSession {
     * Query State registry value should be ONE
     * Write DefaultDistribution registry with provided GUID
     **/
-    HRESULT(__stdcall *SetDefaultDistribution) (
+    HRESULT(STDMETHODCALLTYPE *SetDefaultDistribution) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId
         );
@@ -147,15 +153,18 @@ struct _WslSession {
     * Query State registry value should be ONE
     * Returns GUID list in 16 bytes offsets
     **/
-    HRESULT(__stdcall *EnumerateDistributions) (
+    HRESULT(STDMETHODCALLTYPE *EnumerateDistributions) (
         _In_ pWslSession* wslSession,
         _In_ ULONG State,
         _Out_ PULONG DistroCount,
         _Out_ GUID** DistroIdList
         );
 
-    //PVOID ObjectStublessClient13;
-    HRESULT(__stdcall *CreateLxProcess) (
+     /**
+    * PVOID ObjectStublessClient13;
+    * Related with hidden WSL_VM_Mode feature
+    **/
+    HRESULT(STDMETHODCALLTYPE *CreateLxProcess) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_ LPCSTR unknown
@@ -166,7 +175,7 @@ struct _WslSession {
     * Query Distribution Configuration and Version is TWO for newer installation
     * Write State registry to FIVE means upgrading
     **/
-    HRESULT(__stdcall *BeginUpgradeDistribution) (
+    HRESULT(STDMETHODCALLTYPE *BeginUpgradeDistribution) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _Out_ PULONG Version,
@@ -178,10 +187,12 @@ struct _WslSession {
     * Query Distribution Configuration and Write State registry to ONE means installed
     * Write Version registry to TWO for newer installation
     **/
-    HRESULT(__stdcall *FinishUpgradeDistribution) (
+    HRESULT(STDMETHODCALLTYPE *FinishUpgradeDistribution) (
         _In_ pWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_ ULONG Version
         );
 
 };
+
+#endif //WSLSESSION_H

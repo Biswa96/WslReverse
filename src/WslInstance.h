@@ -23,13 +23,14 @@ struct _WslInstance {
 
     /**
     * PVOID ObjectStublessClient3;
-    * Register ADSS Bus Server
+    * lxssmanager is registered by LxssManager service
+    * Choose LxBusServerName other than lxssmanager
     * 0x22002B == CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0A, METHOD_NEITHER, FILE_ANY_ACCESS)
     **/
-    HRESULT(__stdcall *RegisterAdssBusServer) (
+    HRESULT(STDMETHODCALLTYPE *RegisterLxBusServer) (
         _In_ pWslInstance *wslInstance,
-        _In_ LPCSTR ServerName,
-        _Out_ PULONG ServerHandle
+        _In_ PSTR LxBusServerName,
+        _Out_ PHANDLE ServerHandle
         );
 
     /**
@@ -37,7 +38,7 @@ struct _WslInstance {
     * InstanceID matches with tmpfs folder name
     * But differs when CreateInstance is called
     **/
-    HRESULT(__stdcall *GetInstanceId) (
+    HRESULT(STDMETHODCALLTYPE *GetInstanceId) (
         _In_ pWslInstance* wslInstance,
         _Out_ GUID* InstanceId
         );
@@ -46,13 +47,17 @@ struct _WslInstance {
     * PVOID ObjectStublessClient5;
     * Get only current initiated Distribution ID
     **/
-    HRESULT(__stdcall *GetDistributionId) (
+    HRESULT(STDMETHODCALLTYPE *GetDistributionId) (
         _In_ pWslInstance* wslInstance,
         _Out_ GUID* DistroId
         );
 
-    //PVOID ObjectStublessClient6;
-    HRESULT(__stdcall *CreateLxProcess) (
+    /**
+    * PVOID ObjectStublessClient6;
+    * Connected with TEN IOCTLs in LxCore driver
+    * If succeed creates a inherited ConHost process
+    **/
+    HRESULT(STDMETHODCALLTYPE *CreateLxProcess) (
         _In_ pWslInstance* This,
         _In_opt_ PSTR CommandLine,
         _In_opt_ ULONG ArgumentCount,
@@ -68,16 +73,19 @@ struct _WslInstance {
         _Out_ PHANDLE ServerHandle
         );
 
+    // Removed from 19H1 builds
+#if 0
     /**
     * PVOID ObjectStublessClient7;
-    * Connect with ADSS Bus Server
+    * Connect with LxBus Server
     * 0x22002F == CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0B, METHOD_NEITHER, FILE_ANY_ACCESS)
     **/
-    HRESULT(__stdcall *ConnectAdssBusServer) (
+    HRESULT(STDMETHODCALLTYPE *ConnectLxBusServer) (
         _In_ pWslInstance *wslInstance,
-        _In_ LPCSTR ServerName,
-        _In_ PULONG ServerHandle
+        _In_ PSTR LxBusServerName,
+        _Out_ PHANDLE ServerHandle
         );
+#endif
 
 };
 
