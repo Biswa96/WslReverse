@@ -1,23 +1,24 @@
-#include "Functions.h"
+#include <Windows.h>
 #include <stdio.h>
-
-#define MsgSize 0x400
 
 void Log(HRESULT Result, PWSTR Function)
 {
     if (Result != 0)
     {
-        wchar_t MsgBuffer[MsgSize];
-        memset(MsgBuffer, 0, MsgSize * sizeof(wchar_t));
+        PWSTR MsgBuffer = NULL;
         FormatMessageW(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL, Result, MsgSize, MsgBuffer, MsgSize, NULL);
+            (FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS),
+            NULL, Result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (PWSTR)&MsgBuffer, 0, NULL);
         wprintf(L"%ls Error: %ld\n%ls\n", Function, (Result & 0xFFFF), MsgBuffer);
-        exit(EXIT_FAILURE);
+        LocalFree(MsgBuffer);
     }
 }
 
-void Usage() {
+void Usage(void)
+{
     wprintf(
         L"\nWslReverse -- (c) Copyright 2018 Biswapriyo Nath\n"
         L"Licensed under GNU Public License version 3 or higher\n\n"
@@ -41,8 +42,8 @@ void Usage() {
 
 #define GUID_STRING 40
 
-void PrintGuid(GUID* guid) {
-
+void PrintGuid(GUID* guid)
+{
     wchar_t szGuid[GUID_STRING];
 
     swprintf(

@@ -23,7 +23,7 @@ typedef struct _FILE_FS_DEVICE_INFORMATION {
     ULONG Characteristics;
 } FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;
 
-NTSTATUS NTAPI NtQueryVolumeInformationFile(
+NTSTATUS NtQueryVolumeInformationFile(
     HANDLE            FileHandle,
     PIO_STATUS_BLOCK  IoStatusBlock,
     PVOID             FsInformation,

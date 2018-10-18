@@ -2,13 +2,9 @@
 
 Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru **Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss)**. This project is just a concept, not a fully developed program and should be used for testing purposes. 
 
-## How to build
+## How to use
 
-Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. ALternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe /p:Configuration=Release`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `mingw32-make` command for mingw-w64/msys2/cygwin. Some values are not defined in mingw-w64 toolchain. It will be updated soon.
-
-## Usage
-
-This project only shows the hidden COM methods which may change in future Windows version. The current COM vtable, used in this project, is according with 19H1 Insider version. Use only **Windows 10 Insider Preview Build 18234** or higher. Here are the options of WslReverse: 
+This project only shows the hidden COM methods which may change in future Windows version. The current COM vtable, used in this project, is according with 19H1 Insider version. For RS5 or October update vesrion 1809, use the old executable. Use the new executable from Windows 10 Insider Preview Build 18234 or higher. Here are the options of WslReverse: 
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
@@ -23,6 +19,25 @@ Options:
     -s, --set-config   [distribution name]      Set configuration for distribution.
     -t, --terminate    [distribution name]      Terminate running distribution.
     -u, --uninstall    [distribution name]      Uninstall distribution.
+```
+## How to build
+
+Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. ALternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe /p:Configuration=Release`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `mingw32-make` command for mingw-w64/msys2/cygwin. Some values are not defined in mingw-w64 toolchain. It will be updated soon.
+
+## Project Overview
+
+Here are the overview of files according to their dependencies:
+
+```
+src\
+    |
+    +-- Function: Helping functions to manipulate input & output
+    +-- wgetopt: Converted from Cygwin getopt file for wide characters
+    +-- ConsolePid: Shows associated ConHost PID by IOCTL from condrv.sys
+    +-- CreateLxProcess: Run WSL pico processes
+    +-- WslInstance: LxssInstance interface
+    +-- WslSession: LxssSession interface
+    +-- WslReverse: Main function with option processing
 ```
 
 Check out the Others folder to unleashes the hidden beast. Here are the list of files in Other folders: 

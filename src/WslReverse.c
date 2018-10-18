@@ -7,13 +7,14 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
-int main() {
-
+int main()
+{
     int wargc;
     wchar_t** wargv;
     wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
 
-    if (wargc < 2) {
+    if (wargc < 2)
+    {
         wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
         exit(EXIT_FAILURE);
     }
@@ -22,8 +23,8 @@ int main() {
     int c;
     HRESULT result = 0;
     GUID DistroId = { 0 };
-    pWslSession* wslSession;
-    pWslInstance* wslInstance;
+    PWslSession* wslSession;
+    PWslInstance* wslInstance;
 
     /*Option table*/
     const struct option OptionTable[] = {
@@ -45,35 +46,36 @@ int main() {
     result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (PVOID*)&wslSession);
     Log(result, L"CoCreateInstance");
 
-    while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:r:S:s:t:u:", OptionTable, 0)) != -1) {
-
-        switch (c) {
-
-        case 0: {
+    while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:r:S:s:t:u:", OptionTable, 0)) != -1)
+    {
+        switch (c)
+        {
+        case 0:
+        {
             wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
             Usage();
             break;
         }
-
-        case 'd': {
+        case 'd':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             PrintGuid(&DistroId);
             break;
         }
-
-        case 'G': {
+        case 'G':
+        {
             result = (*wslSession)->GetDefaultDistribution(wslSession, &DistroId);
             Log(result, L"GetDefaultDistribution");
             PrintGuid(&DistroId);
             break;
         }
-
-        case 'g': {
+        case 'g':
+        {
             ULONG Version, DefaultUid, Flags, EnvironmentCount;
             PWSTR DistributionName, BasePath;
-            LPSTR KernelCommandLine;
-            LPSTR* DefaultEnvironment = 0;
+            PSTR KernelCommandLine;
+            PSTR* DefaultEnvironment = NULL;
 
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
@@ -90,33 +92,40 @@ int main() {
             );
             break;
         }
-
-        case 'h': {
+        case 'h':
+        {
             Usage();
             break;
         }
-
-        case 'i': {
-            wchar_t TarFile[MAX_PATH], BasePath[MAX_PATH];
+        case 'i':
+        {
+            wchar_t TarFilePath[MAX_PATH], BasePath[MAX_PATH];
             wprintf(L"Enter full path of .tar.gz file (without quote): ");
-            wscanf(L"%ls", TarFile);
-
-            HANDLE hTarFile = CreateFileW(
-                TarFile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
-                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            wscanf(L"%ls", TarFilePath);
 
             wprintf(L"Enter folder path where to install (without quote): ");
             wscanf(L"%ls", BasePath);
 
             CoCreateGuid(&DistroId);
+
+#ifdef RS_FIVE
+            result = (*wslSession)->RegisterDistribution(
+                wslSession, optarg, ToBeInstall, TarFilePath, BasePath, &DistroId);
+#else // 19H1 builds
+            HANDLE hTarFile = CreateFileW(
+                TarFilePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
+                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
             result = (*wslSession)->RegisterDistribution(
                 wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
+#endif
+            if(result == S_OK)
+                wprintf(L"Installed\n");
             Log(result, L"RegisterDistribution");
-            wprintf(L"Installing...\n");
             break;
         }
-
-        case 'r': {
+        case 'r':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->CreateInstance(wslSession, &DistroId, TRUE, &IID_ILxssInstance, (PVOID*)&wslInstance);
@@ -125,20 +134,20 @@ int main() {
             Log(result, L"CreateLxProcess");
             break;
         }
-
-        case 'S': {
+        case 'S':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->SetDefaultDistribution(wslSession, &DistroId);
             Log(result, L"SetDefaultDistribution");
             break;
         }
-
-        case 's': {
+        case 's':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
-            LPCSTR KernelCommandLine = "BOOT_IMAGE=/kernel init=/init ro";
-            LPCSTR DefaultEnvironment[4] = { 
+            PCSTR KernelCommandLine = "BOOT_IMAGE=/kernel init=/init ro";
+            PCSTR DefaultEnvironment[4] = { 
                 "HOSTTYPE=x86_64"
                 "LANG=en_US.UTF-8"
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -149,28 +158,25 @@ int main() {
             Log(result, L"ConfigureDistribution");
             break;
         }
-
-        case 't': {
+        case 't':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->TerminateDistribution(wslSession, &DistroId);
             Log(result, L"TerminateDistribution");
             break;
         }
-
-        case 'u': {
+        case 'u':
+        {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
             result = (*wslSession)->UnregisterDistribution(wslSession, &DistroId);
             Log(result, L"UnregisterDistribution");
             break;
         }
-
         default:
             wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
         }
-
     }
-
     return 0;
 }

@@ -1,7 +1,7 @@
-#include "CreateLxProcess.h"
+#include "WslInstance.h"
 #include "Functions.h"
+#include "WinInternal.h"
 #include <stdio.h>
-#include <winternl.h>
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
@@ -24,11 +24,7 @@
 // Forward Declarations
 void ConsolePid(HANDLE ConsoleHandle);
 
-// Disable "nonstandard extension used" warning
-#pragma warning(push)
-#pragma warning(disable: 4204)
-
-void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
+void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
 {
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
     HANDLE hTarget = NULL;
@@ -38,8 +34,8 @@ void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
     STARTUPINFOEXW SInfoEx;
 
     ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
-    HRESULT hr = (*wslInstance)->GetDistributionId(wslInstance, &Guid);
-    Log(hr, L"GetDistributionId");
+    HRESULT hRes = (*wslInstance)->GetDistributionId(wslInstance, &Guid);
+    Log(hRes, L"GetDistributionId");
 
     // CreateThreadpoolWork((PTP_WORK_CALLBACK)CreateProcessWorker, TargetHandle, NULL);
 
@@ -56,7 +52,10 @@ void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
     LPPROC_THREAD_ATTRIBUTE_LIST AttrList = malloc(size);
     InitializeProcThreadAttributeList(AttrList, 1, 0, &size);
 
-    HANDLE Value[3] = { ServerHandle, hEvent, hTarget };
+    HANDLE Value[3] = { NULL };
+    Value[0] = ServerHandle;
+    Value[1] = hEvent;
+    Value[2] = hTarget;
     UpdateProcThreadAttribute(AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
         Value, sizeof(Value), NULL, NULL);
 
@@ -79,11 +78,25 @@ void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
     SInfoEx.lpAttributeList = AttrList;
 
     // bInheritHandles must be TRUE for wslhost.exe
-    if (CreateProcessW(NULL, CommandLine, NULL, NULL, TRUE,
+    BOOL bRes = CreateProcessW(
+        NULL,
+        CommandLine,
+        NULL,
+        NULL,
+        TRUE,
         EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NEW_CONSOLE,
-        NULL, NULL, &SInfoEx.StartupInfo, &ProcInfo))
+        NULL,
+        NULL,
+        &SInfoEx.StartupInfo,
+        &ProcInfo);
+
+    free(AttrList);
+
+    if (bRes)
     {
-        HANDLE lpHandles[2] = { ProcInfo.hProcess, hEvent };
+        HANDLE lpHandles[2] = { NULL };
+        lpHandles[0] = ProcInfo.hProcess;
+        lpHandles[1] = hEvent;
         WaitForMultipleObjects(ARRAY_SIZE(lpHandles), lpHandles, FALSE, 0);
     }
     else
@@ -92,13 +105,10 @@ void InitializeInterop(pWslInstance* wslInstance, HANDLE ServerHandle)
     }
 
     // Cleanup handles
-    free(AttrList);
     CloseHandle(hEvent);
     CloseHandle(ProcInfo.hProcess);
     CloseHandle(ProcInfo.hThread);
 }
-
-#pragma warning(pop)
 
 void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PULONG OutputMode)
 {
@@ -134,10 +144,16 @@ void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PUL
     }
 }
 
-HRESULT CreateLxProcess(pWslInstance* wslInstance)
+HRESULT CreateLxProcess(PWslInstance* wslInstance)
 {
     ULONG InputMode, OutputMode;
     HANDLE ProcessHandle = NULL, ServerHandle = NULL;
+
+    // Preapare environments and argument
+    PSTR Args[] = { "-bash" };
+    ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
+    PWSTR PathVariable = malloc(sizeof(wchar_t) * nSize);
+    ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Configure Console Handles
     HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
@@ -162,29 +178,28 @@ HRESULT CreateLxProcess(pWslInstance* wslInstance)
 #endif
 
     // Console Window handle of current process (if any)
-    HANDLE ConsoleHandle = NtCurrentTeb()->
-        ProcessEnvironmentBlock->ProcessParameters->Reserved2[0];
+    HANDLE ConsoleHandle = UserProcessParameter()->ConsoleHandle;
 
 #if defined (_DEBUG) || defined (DEBUG)
     ConsolePid(ConsoleHandle);
 #endif
-
-    PSTR Args[] = {"-bash"};
 
     HRESULT result = (*wslInstance)->CreateLxProcess(
         wslInstance,
         "/bin/bash",
         ARRAY_SIZE(Args),
         Args,
-        L"C:\\Users",
-        L"C:\\Windows\\System32;C:\\Windows",
-        NULL,
-        0,
+        UserProcessParameter()->CurrentDirectory.DosPath.Buffer,    // GetCurrentDircetoryW();
+        PathVariable,                                               // Paths shared b/w Windows and WSL
+        UserProcessParameter()->Environment,                        // GetEnvironmentStringsW();
+        UserProcessParameter()->EnvironmentSize,
         &StdHandles,
         HandleToULong(ConsoleHandle),
         L"root",
         &ProcessHandle,
         &ServerHandle);
+
+    free(PathVariable);
 
     if (result >= ERROR_SUCCESS)
     {

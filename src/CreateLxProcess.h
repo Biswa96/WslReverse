@@ -2,6 +2,6 @@
 #define CREATELXPROCESS_H
 
 #include "WslInstance.h"
-HRESULT CreateLxProcess(pWslInstance* wslInstance);
+HRESULT CreateLxProcess(PWslInstance* wslInstance);
 
 #endif //CREATELXPROCESS_H
