@@ -1,6 +1,13 @@
 #include <Windows.h>
 #include <winternl.h>
 
+#ifndef CTL_CODE
+#define FILE_ANY_ACCESS 0
+#define METHOD_NEITHER 3
+#define CTL_CODE( DeviceType, Function, Method, Access ) \
+    (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
+#endif
+
 typedef struct _CURDIR {
     UNICODE_STRING DosPath;
     HANDLE Handle;
@@ -46,7 +53,7 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     UNICODE_STRING DesktopInfo;
     UNICODE_STRING ShellInfo;
     UNICODE_STRING RuntimeData;
-    RTL_DRIVE_LETTER_CURDIR CurrentDirectores[RTL_MAX_DRIVE_LETTERS];
+    RTL_DRIVE_LETTER_CURDIR CurrentDirectories[RTL_MAX_DRIVE_LETTERS];
     SIZE_T EnvironmentSize;
     SIZE_T EnvironmentVersion;
     PVOID PackageDependencyData;
@@ -55,12 +62,37 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     UNICODE_STRING RedirectionDllName;
 } X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
 
-// Type casting used to know placement of standard handles
-// Added in CreateLxProcess.c file
+#ifdef _MSC_VER
 
-static X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void)
-{
-    return (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->
-                                           ProcessEnvironmentBlock->
-                                           ProcessParameters;
-}
+typedef struct _FILE_FS_DEVICE_INFORMATION {
+    ULONG DeviceType;
+    ULONG Characteristics;
+} FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;
+
+typedef enum _FSINFOCLASS {
+    FileFsVolumeInformation = 1,
+    FileFsLabelInformation,
+    FileFsSizeInformation,
+    FileFsDeviceInformation,
+    FileFsAttributeInformation,
+    FileFsControlInformation,
+    FileFsFullSizeInformation,
+    FileFsObjectIdInformation,
+    FileFsDriverPathInformation,
+    FileFsVolumeFlagsInformation,
+    FileFsSectorSizeInformation,
+    FileFsDataCopyInformation,
+    FileFsMetadataSizeInformation,
+    FileFsFullSizeInformationEx,
+    FileFsMaximumInformation
+} FSINFOCLASS, *PFSINFOCLASS;
+
+NTSTATUS NtQueryVolumeInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_ PVOID FsInformation,
+    _In_ ULONG Length,
+    _In_ FSINFOCLASS FsInformationClass
+);
+
+#endif

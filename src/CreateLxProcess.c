@@ -1,8 +1,10 @@
 #include "WslInstance.h"
 #include "Functions.h"
 #include "WinInternal.h"
+#include "ConsolePid.h"
 #include <stdio.h>
 
+#define STATUS_SUCCESS 0
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
 #ifndef CTL_CODE
@@ -13,40 +15,104 @@
     (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
 #endif
 
-//LxpControlDeviceIoctlLxProcess
+// LxCore!LxpControlDeviceIoctlLxProcess
 #define IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x34, METHOD_NEITHER, FILE_ANY_ACCESS) //0x2200D3u
 
-//LxpControlDeviceIoctlServerPort
+// LxCore!LxpControlDeviceIoctlServerPort
 #define IOCTL_ADSS_IPC_SERVER_WAIT_FOR_CONNECTION \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS) //0x220033u
 
-// Forward Declarations
-void ConsolePid(HANDLE ConsoleHandle);
+typedef union _LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG {
+    ULONG Timeout;
+    ULONG ClientHandle;
+} LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG, *PLXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG;
+
+// Global variables
+HRESULT hRes;
+NTSTATUS Status;
+IO_STATUS_BLOCK Isb;
+
+// Forward declarations
+void CreateProcessAsync(
+    PTP_CALLBACK_INSTANCE Instance,
+    HANDLE ClientHandle,
+    PTP_WORK Work);
+
+void CreateProcessWorker(
+    PTP_CALLBACK_INSTANCE Instance,
+    HANDLE ServerHandle,
+    PTP_WORK Work)
+{
+    UNREFERENCED_PARAMETER(Instance);
+    UNREFERENCED_PARAMETER(Work);
+    PTP_WORK pwk = NULL;
+    LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG ConnectionMsg = { 0 };
+
+    // Infinite loop to wait from client message
+    while (TRUE)
+    {
+        ConnectionMsg.Timeout = INFINITE;
+
+        Status = NtDeviceIoControlFile(
+            ServerHandle,
+            NULL,
+            NULL,
+            NULL,
+            &Isb,
+            IOCTL_ADSS_IPC_SERVER_WAIT_FOR_CONNECTION,
+            &ConnectionMsg, sizeof(ConnectionMsg),
+            &ConnectionMsg, sizeof(ConnectionMsg));
+
+        if (Status < STATUS_SUCCESS)
+            break;
+
+        wprintf(L"ClientHandle: %lu\n", ConnectionMsg.ClientHandle);
+
+        pwk = CreateThreadpoolWork(
+            (PTP_WORK_CALLBACK)CreateProcessAsync,
+            ULongToHandle(ConnectionMsg.ClientHandle),
+            NULL);
+
+        ConnectionMsg.Timeout = 0;
+        SubmitThreadpoolWork(pwk);
+        CloseThreadpoolWork(pwk);
+    }
+
+    NtClose(ServerHandle);
+}
 
 void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
 {
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
-    HANDLE hTarget = NULL;
+    HANDLE CurrentProcHandle = NULL, serverHandle = NULL;
     GUID Guid;
     size_t size;
     PROCESS_INFORMATION ProcInfo;
     STARTUPINFOEXW SInfoEx;
 
+    // Make handles inheritable by child process aka. wslhost.exe
+    SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    HANDLE hProc = GetCurrentProcess();
+
+    // Connect to LxssServerPort for Windows interopt
+    if (DuplicateHandle(hProc, ServerHandle, hProc, &serverHandle, 0, FALSE, DUPLICATE_SAME_ACCESS))
+    {
+        PTP_WORK pwk = CreateThreadpoolWork(
+            (PTP_WORK_CALLBACK)CreateProcessWorker,
+            serverHandle,
+            NULL);
+        SubmitThreadpoolWork(pwk);
+    }
+
     ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
-    HRESULT hRes = (*wslInstance)->GetDistributionId(wslInstance, &Guid);
+    hRes = (*wslInstance)->GetDistributionId(wslInstance, &Guid);
     Log(hRes, L"GetDistributionId");
 
-    // CreateThreadpoolWork((PTP_WORK_CALLBACK)CreateProcessWorker, TargetHandle, NULL);
-
-    // Configure all the required handles
+    // Create an event to synchronize with wslhost.exe process
     HANDLE hEvent = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
-    HANDLE hProc = GetCurrentProcess();
-    DuplicateHandle(hProc, hProc, hProc, &hTarget, 0, TRUE, DUPLICATE_SAME_ACCESS);
-
-    // Make handles inheritable by child process aka. wslhost.exe
     SetHandleInformation(hEvent, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-    SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    DuplicateHandle(hProc, hProc, hProc, &CurrentProcHandle, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
     InitializeProcThreadAttributeList(NULL, 1, 0, &size);
     LPPROC_THREAD_ATTRIBUTE_LIST AttrList = malloc(size);
@@ -55,7 +121,7 @@ void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
     HANDLE Value[3] = { NULL };
     Value[0] = ServerHandle;
     Value[1] = hEvent;
-    Value[2] = hTarget;
+    Value[2] = CurrentProcHandle;
     UpdateProcThreadAttribute(AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
         Value, sizeof(Value), NULL, NULL);
 
@@ -69,7 +135,7 @@ void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
         Guid.Data4[6], Guid.Data4[7],
         PtrToUlong(ServerHandle),
         PtrToUlong(hEvent),
-        PtrToUlong(hTarget));
+        PtrToUlong(CurrentProcHandle));
 
     memset(&SInfoEx, 0, sizeof(STARTUPINFOEXW));
     SInfoEx.StartupInfo.cb = sizeof(STARTUPINFOEXW);
@@ -105,25 +171,22 @@ void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
     }
 
     // Cleanup handles
-    CloseHandle(hEvent);
-    CloseHandle(ProcInfo.hProcess);
-    CloseHandle(ProcInfo.hThread);
+    NtClose(hEvent);
+    NtClose(CurrentProcHandle);
+    NtClose(ProcInfo.hProcess);
+    NtClose(ProcInfo.hThread);
 }
+
+#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
+#define REQUIRED_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
 
 void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PULONG OutputMode)
 {
-
     if (GetFileType(hStdInput) == FILE_TYPE_CHAR
         && GetConsoleMode(hStdInput, InputMode))
     {
         // Switch to VT-100 Input Console
-        ULONG NewMode = (*InputMode &
-            ~(ENABLE_INSERT_MODE
-                | ENABLE_ECHO_INPUT
-                | ENABLE_LINE_INPUT
-                | ENABLE_PROCESSED_INPUT)
-            | (ENABLE_VIRTUAL_TERMINAL_INPUT
-                | ENABLE_WINDOW_INPUT)); // & 0xFFFFFFD8 | 0x208
+        ULONG NewMode = (*InputMode & (~DISABLED_INPUT_MODE)) | REQUIRED_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
         SetConsoleMode(hStdInput, NewMode);
 
         // Switch input to UTF-8
@@ -142,6 +205,16 @@ void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PUL
         // Switch output to UTF-8
         SetConsoleOutputCP(CP_UTF8);
     }
+}
+
+// Type casting used to know placement of standard handles
+// Added in CreateLxProcess.c file
+
+static X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void)
+{
+    return (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->
+        ProcessEnvironmentBlock->
+        ProcessParameters;
 }
 
 HRESULT CreateLxProcess(PWslInstance* wslInstance)
@@ -179,12 +252,9 @@ HRESULT CreateLxProcess(PWslInstance* wslInstance)
 
     // Console Window handle of current process (if any)
     HANDLE ConsoleHandle = UserProcessParameter()->ConsoleHandle;
-
-#if defined (_DEBUG) || defined (DEBUG)
     ConsolePid(ConsoleHandle);
-#endif
 
-    HRESULT result = (*wslInstance)->CreateLxProcess(
+    hRes = (*wslInstance)->CreateLxProcess(
         wslInstance,
         "/bin/bash",
         ARRAY_SIZE(Args),
@@ -201,23 +271,26 @@ HRESULT CreateLxProcess(PWslInstance* wslInstance)
 
     free(PathVariable);
 
-    if (result >= ERROR_SUCCESS)
+    if (hRes >= ERROR_SUCCESS)
     {
         if (SetHandleInformation(ProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
-            ULONG ExitStatus, status;
+            ULONG ExitStatus = INFINITE;
 
             InitializeInterop(wslInstance, ServerHandle);
 
             // Use the IOCTL to wait on the process to terminate
-            status = DeviceIoControl(
+            Status = NtDeviceIoControlFile(
                 ProcessHandle,
+                NULL,
+                NULL,
+                NULL,
+                &Isb,
                 IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
-                &ExitStatus, sizeof(int),
-                &ExitStatus, sizeof(int),
-                NULL, NULL);
+                &ExitStatus, sizeof(ExitStatus),
+                &ExitStatus, sizeof(ExitStatus));
 
-            if(status)
+            if(Status >= STATUS_SUCCESS)
                 GetExitCodeProcess(ProcessHandle, &ExitStatus);
         }
     }
@@ -230,5 +303,5 @@ HRESULT CreateLxProcess(PWslInstance* wslInstance)
     CloseHandle(ProcessHandle);
     CloseHandle(ServerHandle);
 
-    return result;
+    return hRes;
 }

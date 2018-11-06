@@ -1,42 +1,19 @@
-#include <Windows.h>
-#include <winternl.h>
+#include "WinInternal.h"
 #include <stdio.h>
 
-#ifndef CTL_CODE
-#define FILE_ANY_ACCESS 0
+#ifndef FILE_DEVICE_CONSOLE
 #define FILE_DEVICE_CONSOLE 0x00000050
-#define METHOD_NEITHER 3
-#define CTL_CODE( DeviceType, Function, Method, Access ) \
-    (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
 #endif
 
 //CdpConnectionFastIoctl
 #define IOCTL_CDP_FAST_CONNECTION \
     CTL_CODE(FILE_DEVICE_CONSOLE, 0x08, METHOD_NEITHER, FILE_ANY_ACCESS) //0x500023u
 
-#define FileFsDeviceInformation 4
-
-#ifdef _MSC_VER
-
-typedef struct _FILE_FS_DEVICE_INFORMATION {
-    ULONG DeviceType;
-    ULONG Characteristics;
-} FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;
-
-NTSTATUS NtQueryVolumeInformationFile(
-    HANDLE            FileHandle,
-    PIO_STATUS_BLOCK  IoStatusBlock,
-    PVOID             FsInformation,
-    ULONG             Length,
-    ULONG             FsInformationClass);
-
-#endif
-
-void ConsolePid(HANDLE ConsoleHandle)
+void ConsolePid(void* ConsoleHandle)
 {
     IO_STATUS_BLOCK IoStatusBlock;
     FILE_FS_DEVICE_INFORMATION FsInformation;
-    ULONG64 ConHostPid;
+    ULONG64 ConHostPid = 0;
     NTSTATUS Status;
 
     Status = NtQueryVolumeInformationFile(

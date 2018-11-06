@@ -7,7 +7,7 @@ where cl.exe link.exe
 ::Set Environment Variables
 set NAME=WslReverse.exe
 set BINDIR="bin"
-set CFLAGS=/c /W4 /sdl /Fo%BINDIR%\\
+set CFLAGS=/c /W4 /sdl /MD /Fo%BINDIR%\\
 set CCOPT=/DRS_FIVE
 set LFLAGS=/MACHINE:X64
 set LIBS=Ole32.lib Shell32.lib NtDll.lib

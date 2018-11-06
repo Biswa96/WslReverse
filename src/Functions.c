@@ -12,7 +12,7 @@ void Log(HRESULT Result, PWSTR Function)
                 FORMAT_MESSAGE_IGNORE_INSERTS),
             NULL, Result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             (PWSTR)&MsgBuffer, 0, NULL);
-        wprintf(L"%ls Error: %ld\n%ls\n", Function, (Result & 0xFFFF), MsgBuffer);
+        wprintf(L"%ls Error: %ld\n%ls", Function, (Result & 0xFFFF), MsgBuffer);
         LocalFree(MsgBuffer);
     }
 }
@@ -30,7 +30,8 @@ void Usage(void)
         L"  -g, --get-config   [distribution name]      Get distribution configuration.\n"
         L"  -h, --help                                  Show list of options.\n"
         L"  -i, --install      [distribution name]      Install distribution (run as administrator).\n"
-        L"  -r, --run          [distribution name]      Run a Linux binary.\n"
+        L"  -l, --list                                  List all distributions with pending ones.\n"
+        L"  -r, --run          [distribution name]      Run bash in provided distribution.\n"
         L"  -S, --set-default  [distribution name]      Set default distribution.\n"
         L"  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
         L"  -t, --terminate    [distribution name]      Terminate running distribution.\n"
@@ -42,19 +43,12 @@ void Usage(void)
 
 #define GUID_STRING 40
 
-void PrintGuid(GUID* guid)
+void PrintGuid(GUID* id, PWSTR string)
 {
-    wchar_t szGuid[GUID_STRING];
-
-    swprintf(
-        szGuid,
-        GUID_STRING,
+    swprintf(string, GUID_STRING,
         L"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-        guid->Data1, guid->Data2, guid->Data3,
-        guid->Data4[0], guid->Data4[1], guid->Data4[2],
-        guid->Data4[3], guid->Data4[4], guid->Data4[5],
-        guid->Data4[6], guid->Data4[7]
-    );
-
-    wprintf(L"%ls\n", szGuid);
+        id->Data1, id->Data2, id->Data3,
+        id->Data4[0], id->Data4[1], id->Data4[2],
+        id->Data4[3], id->Data4[4], id->Data4[5],
+        id->Data4[6], id->Data4[7]);
 }

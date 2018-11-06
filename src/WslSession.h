@@ -66,7 +66,7 @@ struct _WslSession {
     * PVOID ObjectStublessClient4;
     * Write State to THREE means installing
     * Run as administrator otherwise E_ACCESSDENIED error
-    * Version Must be TWO for newer installation
+    * State Must be TWO for newer installation
     **/
 #ifdef RS_FIVE
     HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
@@ -78,7 +78,7 @@ struct _WslSession {
         _In_ GUID* DistroId
         );
 #else // 19H1 builds
-    HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
+    HRESULT(STDMETHODCALLTYPE *RegisterDistributionV1)(
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
@@ -86,10 +86,24 @@ struct _WslSession {
         _In_ PWSTR BasePath,
         _In_ GUID* DistroId
         );
-#endif // RS_FIVE
 
     /**
     * PVOID ObjectStublessClient5;
+    * RPC_S_CANNOT_SUPPORT The requested operation is not supported.
+    **/
+    HRESULT(STDMETHODCALLTYPE *RegisterDistributionV2)(
+        _In_ PWslSession* wslSession,
+        _In_ PWSTR DistributionName,
+        _In_ ULONG State,
+        _In_ HANDLE TarGzFileHandle,
+        _In_ PWSTR BasePath,
+        _In_ GUID* DistroId
+        );
+
+#endif // RS_FIVE
+
+    /**
+    * PVOID ObjectStublessClient6;
     * Query State registry value in Lxss registry key
     * Allows only if that value is ONE means installed
     **/
@@ -101,7 +115,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient6;
+    * PVOID ObjectStublessClient7;
     * If DistroId is NULL it will be default distribution
     * Use IServerSecurity interface and terminates any process
     **/
@@ -111,7 +125,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient7;
+    * PVOID ObjectStublessClient8;
     * Query GUID with already registered in Lxss key
     * Write State registry value as FOUR means uninstalling
     **/
@@ -121,7 +135,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient8;
+    * PVOID ObjectStublessClient9;
     * Flags should be less than or equal to SEVEN
     * Writes Environment variables iff EnvironmentCount present
     **/
@@ -136,7 +150,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient9;
+    * PVOID ObjectStublessClient10;
     * Enumerate all value in Lxss\DistroId registry key
     * Query CurrentControlSet\services\LxssManager\DistributionFlags
     **/
@@ -154,7 +168,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient10;
+    * PVOID ObjectStublessClient11;
     * Query DefaultDistribution registry string
     * Delete that if BasePath doesn't exist
     **/
@@ -164,7 +178,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient11;
+    * PVOID ObjectStublessClient12;
     * Query State registry value should be ONE
     * Write DefaultDistribution registry with provided GUID
     **/
@@ -174,29 +188,41 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient12;
+    * PVOID ObjectStublessClient13;
     * Query State registry value should be ONE
     * Returns GUID list in 16 bytes offsets
     **/
     HRESULT(STDMETHODCALLTYPE *EnumerateDistributions)(
         _In_ PWslSession* wslSession,
-        _In_ ULONG State,
+        _In_ BOOLEAN WithThrow,
         _Out_ PULONG DistroCount,
         _Out_ GUID** DistroIdList
         );
 
     /**
-    * PVOID ObjectStublessClient13;
+    * PVOID ObjectStublessClient14;
     * Related with hidden WSL_VM_Mode feature
+    * E_NOINTERFACE No such interface supported
     **/
     HRESULT(STDMETHODCALLTYPE *CreateLxProcess)(
-        _In_ PWslSession* wslSession,
+        _In_ PWslSession* This,
         _In_ GUID* DistroId,
-        _In_ PCSTR unknown
+        _In_ PSTR CommandLine,
+        _In_ ULONG ArgumentCount,
+        _In_ PSTR* Arguments,
+        _In_ PWSTR CurrentDirectory,
+        _In_ PWSTR Environment,
+        _In_ PWSTR EnvSeparators,
+        _In_ ULONG EnvLength,
+        _In_ ULONG LinuxUserName,
+        _In_ USHORT WindowSizeX,
+        _In_ USHORT WindowSizeY,
+        _In_ ULONG ConsoleHandle
+        // many more
         );
 
     /**
-    * PVOID ObjectStublessClient14;
+    * PVOID ObjectStublessClient15;
     * Query Distribution Configuration and Version is TWO for newer installation
     * Write State registry to FIVE means upgrading
     **/
@@ -208,7 +234,7 @@ struct _WslSession {
         );
 
     /**
-    * PVOID ObjectStublessClient15;
+    * PVOID ObjectStublessClient16;
     * Query Distribution Configuration and Write State registry to ONE means installed
     * Write Version registry to TWO for newer installation
     **/
@@ -216,6 +242,24 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_ ULONG Version
+        );
+
+    /**
+    * PVOID ObjectStublessClient17;
+    * E_NOINTERFACE No such interface supported
+    **/
+    HRESULT(STDMETHODCALLTYPE *DisableVmMode)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* DistroId
+        );
+
+    /**
+    * PVOID ObjectStublessClient18;
+    * E_NOINTERFACE No such interface supported
+    **/
+    HRESULT(STDMETHODCALLTYPE *EnableVmMode)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* DistroId
         );
 };
 

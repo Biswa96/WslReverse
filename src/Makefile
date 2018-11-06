@@ -22,4 +22,4 @@ $(BINS): $(BINDIR)/%.obj: %.c
 $(BINDIR):
 	@mkdir ..\bin
 
-#END-24#
+#END

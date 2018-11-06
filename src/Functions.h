@@ -4,7 +4,7 @@
 #include <Windows.h>
 
 void Log(HRESULT Result, PWSTR Function);
-void PrintGuid(GUID* guid);
+void PrintGuid(GUID* id, PWSTR string);
 void Usage();
 
 #endif //FUNCTIONS_H
