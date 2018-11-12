@@ -1,19 +1,15 @@
-#include "WslInstance.h"
+#include "WslSession.h"
 #include "Functions.h"
 #include "WinInternal.h"
 #include "ConsolePid.h"
 #include <stdio.h>
 
 #define STATUS_SUCCESS 0
+#define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
-#ifndef CTL_CODE
-#define FILE_ANY_ACCESS 0
-#define FILE_DEVICE_UNKNOWN 0x00000022
-#define METHOD_NEITHER 3
-#define CTL_CODE( DeviceType, Function, Method, Access ) \
-    (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
-#endif
+#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
+#define REQUIRED_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
 
 // LxCore!LxpControlDeviceIoctlLxProcess
 #define IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL \
@@ -49,7 +45,7 @@ void CreateProcessWorker(
     PTP_WORK pwk = NULL;
     LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG ConnectionMsg = { 0 };
 
-    // Infinite loop to wait from client message
+    // Infinite loop to wait for client message
     while (TRUE)
     {
         ConnectionMsg.Timeout = INFINITE;
@@ -82,69 +78,67 @@ void CreateProcessWorker(
     NtClose(ServerHandle);
 }
 
-void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
+BOOL InitializeInterop(
+    HANDLE ServerHandle,
+    GUID* CurrentDistroID)
 {
+    BOOL bRes;
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
-    HANDLE CurrentProcHandle = NULL, serverHandle = NULL;
-    GUID Guid;
+    HANDLE ProcHandle, hServer, hEvent, hProc = NtCurrentProcess();
+    HANDLE Value[3] = { NULL };
     size_t size;
-    PROCESS_INFORMATION ProcInfo;
-    STARTUPINFOEXW SInfoEx;
-
-    // Make handles inheritable by child process aka. wslhost.exe
-    SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-    HANDLE hProc = GetCurrentProcess();
-
-    // Connect to LxssServerPort for Windows interopt
-    if (DuplicateHandle(hProc, ServerHandle, hProc, &serverHandle, 0, FALSE, DUPLICATE_SAME_ACCESS))
-    {
-        PTP_WORK pwk = CreateThreadpoolWork(
-            (PTP_WORK_CALLBACK)CreateProcessWorker,
-            serverHandle,
-            NULL);
-        SubmitThreadpoolWork(pwk);
-    }
-
-    ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
-    hRes = (*wslInstance)->GetDistributionId(wslInstance, &Guid);
-    Log(hRes, L"GetDistributionId");
+    PROCESS_INFORMATION ProcInfo = { 0 };
+    STARTUPINFOEXW SInfoEx = { 0 };
 
     // Create an event to synchronize with wslhost.exe process
-    HANDLE hEvent = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
-    SetHandleInformation(hEvent, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-    DuplicateHandle(hProc, hProc, hProc, &CurrentProcHandle, 0, TRUE, DUPLICATE_SAME_ACCESS);
+    hEvent = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
+    bRes = SetHandleInformation(hEvent, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    bRes = DuplicateHandle(hProc, hProc, hProc, &ProcHandle, 0, TRUE, DUPLICATE_SAME_ACCESS);
+    bRes = DuplicateHandle(hProc, ServerHandle, hProc, &hServer, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
+    // Connect to LxssMessagePort for Windows interopt
+    PTP_WORK pwk = CreateThreadpoolWork(
+        (PTP_WORK_CALLBACK)CreateProcessWorker,
+        hServer,
+        NULL);
+    SubmitThreadpoolWork(pwk);
+
+    // Configure all the required handles for wslhost.exe process
     InitializeProcThreadAttributeList(NULL, 1, 0, &size);
     LPPROC_THREAD_ATTRIBUTE_LIST AttrList = malloc(size);
-    InitializeProcThreadAttributeList(AttrList, 1, 0, &size);
+    bRes = InitializeProcThreadAttributeList(AttrList, 1, 0, &size);
 
-    HANDLE Value[3] = { NULL };
     Value[0] = ServerHandle;
     Value[1] = hEvent;
-    Value[2] = CurrentProcHandle;
-    UpdateProcThreadAttribute(AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+    Value[2] = ProcHandle;
+    bRes = UpdateProcThreadAttribute(AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
         Value, sizeof(Value), NULL, NULL);
 
     // Create required string for CreateProcessW
-    swprintf_s(CommandLine, MAX_PATH,
+    ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
+
+    _snwprintf_s(
+        CommandLine,
+        MAX_PATH * sizeof(wchar_t),
+        MAX_PATH * sizeof(wchar_t),
         L"%ls {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X} %ld %ld %ld",
         WslHost,
-        Guid.Data1, Guid.Data2, Guid.Data3,
-        Guid.Data4[0], Guid.Data4[1], Guid.Data4[2],
-        Guid.Data4[3], Guid.Data4[4], Guid.Data4[5],
-        Guid.Data4[6], Guid.Data4[7],
-        PtrToUlong(ServerHandle),
-        PtrToUlong(hEvent),
-        PtrToUlong(CurrentProcHandle));
+        CurrentDistroID->Data1, CurrentDistroID->Data2, CurrentDistroID->Data3,
+        CurrentDistroID->Data4[0], CurrentDistroID->Data4[1], CurrentDistroID->Data4[2],
+        CurrentDistroID->Data4[3], CurrentDistroID->Data4[4], CurrentDistroID->Data4[5],
+        CurrentDistroID->Data4[6], CurrentDistroID->Data4[7],
+        HandleToULong(ServerHandle),
+        HandleToULong(hEvent),
+        HandleToULong(ProcHandle));
 
-    memset(&SInfoEx, 0, sizeof(STARTUPINFOEXW));
     SInfoEx.StartupInfo.cb = sizeof(STARTUPINFOEXW);
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
     SInfoEx.lpAttributeList = AttrList;
 
     // bInheritHandles must be TRUE for wslhost.exe
-    BOOL bRes = CreateProcessW(
+    bRes = CreateProcessW(
         NULL,
         CommandLine,
         NULL,
@@ -163,7 +157,7 @@ void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
         HANDLE lpHandles[2] = { NULL };
         lpHandles[0] = ProcInfo.hProcess;
         lpHandles[1] = hEvent;
-        WaitForMultipleObjects(ARRAY_SIZE(lpHandles), lpHandles, FALSE, 0);
+        WaitForMultipleObjectsEx(ARRAY_SIZE(lpHandles), lpHandles, FALSE, 0, FALSE);
     }
     else
     {
@@ -172,102 +166,103 @@ void InitializeInterop(PWslInstance* wslInstance, HANDLE ServerHandle)
 
     // Cleanup handles
     NtClose(hEvent);
-    NtClose(CurrentProcHandle);
+    NtClose(ProcHandle);
     NtClose(ProcInfo.hProcess);
     NtClose(ProcInfo.hThread);
+    return bRes;
 }
 
-#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
-#define REQUIRED_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
-
-void ConfigStdHandles(HANDLE hStdInput, PULONG InputMode, HANDLE hStdOutput, PULONG OutputMode)
+HRESULT CreateLxProcess(
+    PWslSession* WslSession,
+    GUID* DistroID)
 {
-    if (GetFileType(hStdInput) == FILE_TYPE_CHAR
-        && GetConsoleMode(hStdInput, InputMode))
-    {
-        // Switch to VT-100 Input Console
-        ULONG NewMode = (*InputMode & (~DISABLED_INPUT_MODE)) | REQUIRED_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
-        SetConsoleMode(hStdInput, NewMode);
+    ULONG InputMode = 0, OutputMode = 0, NewMode = 0;
+    HANDLE ProcessHandle, ServerHandle;
+    GUID CurrentDistroID, LxInstanceID;
+    COORD WindowSize;
+    CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer = { 0 };
+    PVOID socket = NULL;
 
-        // Switch input to UTF-8
-        SetConsoleCP(CP_UTF8);
-    }
+    // LxssManager sets Standard Handles automatically
+    LXSS_STD_HANDLES StdHandles = { 0 };
 
-    if (GetConsoleMode(hStdOutput, OutputMode))
-    {
-        // Switch to VT-100 Output Console
-        ULONG NewMode = (*OutputMode
-            | DISABLE_NEWLINE_AUTO_RETURN
-            | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-            | ENABLE_PROCESSED_OUTPUT); // 0xD
-        SetConsoleMode(hStdOutput, NewMode);
-
-        // Switch output to UTF-8
-        SetConsoleOutputCP(CP_UTF8);
-    }
-}
-
-// Type casting used to know placement of standard handles
-// Added in CreateLxProcess.c file
-
-static X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void)
-{
-    return (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->
-        ProcessEnvironmentBlock->
-        ProcessParameters;
-}
-
-HRESULT CreateLxProcess(PWslInstance* wslInstance)
-{
-    ULONG InputMode, OutputMode;
-    HANDLE ProcessHandle = NULL, ServerHandle = NULL;
+    // Console Window handle of current process (if any)
+    X_PRTL_USER_PROCESS_PARAMETERS ProcParam = UserProcessParameter();
+    HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
+    ConsolePid(ConsoleHandle);
 
     // Preapare environments and argument
     PSTR Args[] = { "-bash" };
     ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
-    PWSTR PathVariable = malloc(sizeof(wchar_t) * nSize);
+    PWSTR PathVariable = malloc(nSize * sizeof(wchar_t));
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Configure Console Handles
     HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    ConfigStdHandles(hIn, &InputMode, hOut, &OutputMode);
 
-    // LxssManager sets Standard Handles automatically
-    LXSS_STD_HANDLES StdHandles;
-    memset(&StdHandles, 0, sizeof(LXSS_STD_HANDLES));
+    if (GetFileType(hIn) == FILE_TYPE_CHAR
+        && GetConsoleMode(hIn, &InputMode))
+    {
+        // Switch to VT-100 Input Console
+        NewMode = (InputMode & (~DISABLED_INPUT_MODE)) | REQUIRED_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
+        SetConsoleMode(hIn, NewMode);
+
+        // Switch input to UTF-8
+        SetConsoleCP(CP_UTF8);
+    }
+
+    if (GetConsoleMode(hOut, &OutputMode))
+    {
+        // Switch to VT-100 Output Console
+        NewMode = (OutputMode
+            | DISABLE_NEWLINE_AUTO_RETURN
+            | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+            | ENABLE_PROCESSED_OUTPUT); // 0xD
+        SetConsoleMode(hOut, NewMode);
+
+        // Switch output to UTF-8
+        SetConsoleOutputCP(CP_UTF8);
+    }
+
+    // Set console size from screen buffer co-ordinates
+    GetConsoleScreenBufferInfoEx(hOut, &ConBuffer);
+    WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
+    WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
 #if 0
     // Fun with Lxss handles
-    HANDLE FileHandle = CreateFileW(L"Alohomora.txt",
-        GENERIC_ALL, FILE_READ_ACCESS | FILE_WRITE_ACCESS,
-        NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    StdHandles.StdIn.Handle = HandleToULong(FileHandle);
-    StdHandles.StdIn.Pipe = TRUE;
-    StdHandles.StdOut.Handle = HandleToULong(FileHandle);
-    StdHandles.StdOut.Pipe = TRUE;
-    StdHandles.StdErr.Handle = HandleToULong(FileHandle);
-    StdHandles.StdErr.Pipe = TRUE;
+    StdHandles.StdIn.Handle = HandleToULong(hIn);
+    StdHandles.StdIn.Pipe = 1;
+    StdHandles.StdOut.Handle = HandleToULong(hOut);
+    StdHandles.StdOut.Pipe = 2;
+    StdHandles.StdErr.Handle = HandleToULong(hOut);
+    StdHandles.StdErr.Pipe = 2;
 #endif
 
-    // Console Window handle of current process (if any)
-    HANDLE ConsoleHandle = UserProcessParameter()->ConsoleHandle;
-    ConsolePid(ConsoleHandle);
-
-    hRes = (*wslInstance)->CreateLxProcess(
-        wslInstance,
+    hRes = (*WslSession)->CreateLxProcess(
+        WslSession,
+        DistroID,
         "/bin/bash",
         ARRAY_SIZE(Args),
         Args,
-        UserProcessParameter()->CurrentDirectory.DosPath.Buffer,    // GetCurrentDircetoryW();
-        PathVariable,                                               // Paths shared b/w Windows and WSL
-        UserProcessParameter()->Environment,                        // GetEnvironmentStringsW();
-        UserProcessParameter()->EnvironmentSize,
-        &StdHandles,
-        HandleToULong(ConsoleHandle),
+        ProcParam->CurrentDirectory.DosPath.Buffer,    // GetCurrentDircetoryW();
+        PathVariable,                                  // Paths shared b/w Windows and WSL
+        ProcParam->Environment,                        // GetEnvironmentStringsW();
+        ProcParam->EnvironmentSize,
         L"root",
+        WindowSize.X,
+        WindowSize.Y,
+        HandleToULong(ConsoleHandle),
+        &StdHandles,
+        &CurrentDistroID,
+        &LxInstanceID,
         &ProcessHandle,
-        &ServerHandle);
+        &ServerHandle,
+        &socket,
+        &socket,
+        &socket,
+        &socket);
 
     free(PathVariable);
 
@@ -277,7 +272,7 @@ HRESULT CreateLxProcess(PWslInstance* wslInstance)
         {
             ULONG ExitStatus = INFINITE;
 
-            InitializeInterop(wslInstance, ServerHandle);
+            InitializeInterop(ServerHandle, &CurrentDistroID);
 
             // Use the IOCTL to wait on the process to terminate
             Status = NtDeviceIoControlFile(
@@ -300,8 +295,8 @@ HRESULT CreateLxProcess(PWslInstance* wslInstance)
     SetConsoleMode(hOut, OutputMode);
 
     // Cleanup handles
-    CloseHandle(ProcessHandle);
-    CloseHandle(ServerHandle);
+    NtClose(ProcessHandle);
+    NtClose(ServerHandle);
 
     return hRes;
 }

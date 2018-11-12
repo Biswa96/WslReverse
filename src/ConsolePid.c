@@ -34,7 +34,7 @@ void ConsolePid(void* ConsoleHandle)
             &IoStatusBlock,
             IOCTL_CDP_FAST_CONNECTION,
             NULL, 0,
-            &ConHostPid, sizeof(ULONG64));
+            &ConHostPid, sizeof(ConHostPid));
 
         if (Status >= 0)
         {

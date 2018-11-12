@@ -62,6 +62,16 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     UNICODE_STRING RedirectionDllName;
 } X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
 
+// Type casting is used to get offsets of standard handles
+// Added in CreateLxProcess.c file
+
+static __inline X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void)
+{
+    return (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->
+        ProcessEnvironmentBlock->
+        ProcessParameters;
+}
+
 #ifdef _MSC_VER
 
 typedef struct _FILE_FS_DEVICE_INFORMATION {
@@ -95,4 +105,4 @@ NTSTATUS NtQueryVolumeInformationFile(
     _In_ FSINFOCLASS FsInformationClass
 );
 
-#endif
+#endif // _MSC_VER

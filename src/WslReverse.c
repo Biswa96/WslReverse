@@ -1,6 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include "Functions.h"
-#include "WslSession.h"
 #include "CreateLxProcess.h"
 #include "wgetopt.h"
 #include <stdio.h>
@@ -26,8 +24,7 @@ int main()
     ULONG Version, DefaultUid, Flags, EnvironmentCount;
     GUID DistroId = { 0 }, DefaultDistroId = { 0 };
     wchar_t GuidString[GUID_STRING];
-    PWslSession* wslSession;
-    PWslInstance* wslInstance;
+    PWslSession* wslSession = NULL;
 
     /*Option table*/
     const struct option OptionTable[] = {
@@ -113,17 +110,13 @@ int main()
 
             CoCreateGuid(&DistroId);
 
-#ifdef RS_FIVE
-            result = (*wslSession)->RegisterDistribution(
-                wslSession, optarg, ToBeInstall, TarFilePath, BasePath, &DistroId);
-#else // 19H1 builds
             HANDLE hTarFile = CreateFileW(
                 TarFilePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
                 NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
             result = (*wslSession)->RegisterDistributionV1(
                 wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
-#endif
+
             if(result == S_OK)
                 wprintf(L"Installed\n");
             Log(result, L"RegisterDistribution");
@@ -177,11 +170,11 @@ int main()
         {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             Log(result, L"GetDistributionId");
-            result = (*wslSession)->CreateInstance(wslSession, &DistroId, TRUE, &IID_ILxssInstance, (PVOID*)&wslInstance);
+            result = (*wslSession)->CreateInstance(wslSession, &DistroId, 0);
             Log(result, L"CreateInstance");
             if (result < 0)
                 return result;
-            result = CreateLxProcess(wslInstance);
+            result = CreateLxProcess(wslSession, &DistroId);
             Log(result, L"CreateLxProcess");
             break;
         }

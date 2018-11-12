@@ -8,11 +8,11 @@ Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspir
 
 ## How to build
 
-Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Alternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe /p:Configuration=Release`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `mingw32-make` command for mingw-w64/msys2/cygwin. Some values are not defined in mingw-w64 toolchain. It will be updated soon.
+Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Alternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe /p:Configuration=Release`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `make` command for mingw-w64/msys2/cygwin. 
 
 ## How to use
 
-This project only shows the hidden COM methods which may change in future Windows version. The current COM vtable, used in this project, is according with 19H1 Insider version. For RS5 or October update version 1809, use the old executable compiled with `RS_FIVE` option. Use the new executable from Latest Windows 10 Insider 19H1 Preview Builds. Here are the options of WslReverse: 
+This project only shows the hidden COM methods which may change in future Windows version. The current COM vtable, used in this project, is according to latest Windows 10 19H1 Insider version. Here are the options of WslReverse: 
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
@@ -37,16 +37,15 @@ Here are the overview of source files according to their dependencies:
 ```
 src\
     |
+    +-- CreateProcessAsync: Create Windows process with LxBus IPC mechanism
     +-- ConsolePid: Shows associated ConHost PID by IOCTL from condrv.sys
     +-- WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS structure from PEB
-    +-- CreateProcessAsync: Create Windows process with LxBus IPC mechanism
+    +-- WslSession: LxssSession COM interface
         |
         +-- CreateLxProcess: Run WSL pico processes
             |
             |   +-- Function: Helping functions to manipulate input & output
             |   +-- wgetopt: Converted from Cygwin getopt file for wide characters
-            |   +-- WslInstance: LxssInstance COM interface
-            |   +-- WslSession: LxssSession COM interface
             |   |
             +-- WslReverse: Main function with option processing
 ```

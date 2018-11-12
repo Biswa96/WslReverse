@@ -15,12 +15,6 @@ static const GUID IID_ILxssUserSession = {
     0x41D9,
     { 0xB9, 0x78, 0xDC, 0xAC, 0xA9, 0xA9, 0xB5, 0xB9 } };
 
-static const GUID IID_ILxssInstance = {
-    0x8F9E8123,
-    0x58D4,
-    0x484A,
-    { 0xAC, 0x25, 0x7E, 0xF7, 0xD5, 0xF7, 0x44, 0x8F } };
-
 typedef enum _WslDefaultUID {
     RootUser = 0,
     NormalUser = 1000
@@ -42,6 +36,17 @@ typedef enum _WSL_DISTRIBUTION_FLAGS {
     WSL_DISTRIBUTION_FLAGS_DEFAULT = 7
 } WSL_DISTRIBUTION_FLAGS;
 
+typedef struct _LXSS_STD_HANDLE {
+    ULONG Handle;
+    ULONG Pipe;
+} LXSS_STD_HANDLE, *PLXSS_STD_HANDLE;
+
+typedef struct _LXSS_STD_HANDLES {
+    LXSS_STD_HANDLE StdIn;
+    LXSS_STD_HANDLE StdOut;
+    LXSS_STD_HANDLE StdErr;
+} LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
+
 typedef struct _WslSession WslSession, *PWslSession;
 
 struct _WslSession {
@@ -52,14 +57,12 @@ struct _WslSession {
     /**
     * PVOID ObjectStublessClient3;
     * Create new LxssInstance or get the running one
-    * If no DistroId is present get default one
+    * If no DistroId is provided get the default one
     **/
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
         _In_ PWslSession* wslSession,
         _In_opt_ GUID* DistroId,
-        _In_ ULONG CreateWithThrow,
-        _In_ const GUID* ILxssInstance,
-        _Out_ PVOID* wslInstance
+        _In_opt_ ULONG InstanceMode
         );
 
     /**
@@ -68,16 +71,6 @@ struct _WslSession {
     * Run as administrator otherwise E_ACCESSDENIED error
     * State Must be TWO for newer installation
     **/
-#ifdef RS_FIVE
-    HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
-        _In_ PWslSession* wslSession,
-        _In_ PWSTR DistributionName,
-        _In_ ULONG State,
-        _In_ PWSTR TarGzFilePath,
-        _In_ PWSTR BasePath,
-        _In_ GUID* DistroId
-        );
-#else // 19H1 builds
     HRESULT(STDMETHODCALLTYPE *RegisterDistributionV1)(
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistributionName,
@@ -99,8 +92,6 @@ struct _WslSession {
         _In_ PWSTR BasePath,
         _In_ GUID* DistroId
         );
-
-#endif // RS_FIVE
 
     /**
     * PVOID ObjectStublessClient6;
@@ -202,23 +193,30 @@ struct _WslSession {
     /**
     * PVOID ObjectStublessClient14;
     * Related with hidden WSL_VM_Mode feature
-    * E_NOINTERFACE No such interface supported
     **/
     HRESULT(STDMETHODCALLTYPE *CreateLxProcess)(
-        _In_ PWslSession* This,
-        _In_ GUID* DistroId,
-        _In_ PSTR CommandLine,
-        _In_ ULONG ArgumentCount,
-        _In_ PSTR* Arguments,
-        _In_ PWSTR CurrentDirectory,
-        _In_ PWSTR Environment,
-        _In_ PWSTR EnvSeparators,
-        _In_ ULONG EnvLength,
-        _In_ ULONG LinuxUserName,
-        _In_ USHORT WindowSizeX,
-        _In_ USHORT WindowSizeY,
-        _In_ ULONG ConsoleHandle
-        // many more
+        _In_ PWslSession* wslSession,
+        _In_opt_ GUID* DistroId,
+        _In_opt_ PSTR CommandLine,
+        _In_opt_ ULONG ArgumentCount,
+        _In_opt_ PSTR* Arguments,
+        _In_opt_ PWSTR CurrentDirectory,
+        _In_opt_ PWSTR SharedEnvironment,
+        _In_opt_ PWSTR ProcessEnvironment,
+        _In_opt_ SIZE_T EnvironmentLength,
+        _In_opt_ PWSTR LinuxUserName,
+        _In_ USHORT WindowWidthX,
+        _In_ USHORT WindowHeightY,
+        _In_ ULONG ConsoleHandle,
+        _In_ PLXSS_STD_HANDLES StdHandles,
+        _Out_ GUID* InitiatedDistroId,
+        _Out_ GUID* LxInstanceId,
+        _Out_ PHANDLE ProcessHandle,
+        _Out_ PHANDLE ServerHandle,
+        _In_ PVOID VmModeSocketA,
+        _In_ PVOID VmModeSocketB,
+        _In_ PVOID VmModeSocketC,
+        _In_ PVOID VmModeSocketD
         );
 
     /**
@@ -261,6 +259,18 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ GUID* DistroId
         );
+
+    /**
+    * PVOID ObjectStublessClient19;
+    * Element not found
+    **/
+    HRESULT(STDMETHODCALLTYPE *RegisterLxBusServer)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* DistroId,
+        _In_ PSTR LxBusServerName,
+        _Out_ PHANDLE ServerHandle
+        );
+
 };
 
 #endif //WSLSESSION_H
