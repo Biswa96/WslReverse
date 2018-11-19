@@ -5,11 +5,12 @@
 #define FILE_DEVICE_CONSOLE 0x00000050
 #endif
 
-//CdpConnectionFastIoctl
+// ConDrv!CdpConnectionFastIoctl
 #define IOCTL_CDP_FAST_CONNECTION \
     CTL_CODE(FILE_DEVICE_CONSOLE, 0x08, METHOD_NEITHER, FILE_ANY_ACCESS) //0x500023u
 
-void ConsolePid(void* ConsoleHandle)
+void ConsolePid(
+    void* ConsoleHandle)
 {
     IO_STATUS_BLOCK IoStatusBlock;
     FILE_FS_DEVICE_INFORMATION FsInformation;
@@ -20,7 +21,7 @@ void ConsolePid(void* ConsoleHandle)
         ConsoleHandle,
         &IoStatusBlock,
         &FsInformation,
-        sizeof(FILE_FS_DEVICE_INFORMATION),
+        sizeof(FsInformation),
         FileFsDeviceInformation);
 
     // FsInformation.Characteristics == FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL
@@ -39,7 +40,7 @@ void ConsolePid(void* ConsoleHandle)
         if (Status >= 0)
         {
             wprintf(
-                L"ConHost PID: %lld Handle: %ld\n",
+                L"[*] ConHost PID: %lld Handle: %ld\n",
                 ConHostPid,
                 HandleToULong(ConsoleHandle));
         } 

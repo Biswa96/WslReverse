@@ -56,6 +56,13 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 * [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` placed separately from `LxssManager.DLL` file. 
 * [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade and uninstallation procedure. 
 
+## Acknowledgments
+
+This project uses some definitions and data types from followings. Thanks to:
+
+* Alex Ionescu for [lxss project][1] and all the IOCTLs details ([MIT License][2]). 
+* Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API header files][3] ([GPLv3 License][4]). 
+
 ## License 
 
 This project is licensed under GNU Public License v3 or higher. You are free to study, modify or distribute the source code. 
@@ -76,3 +83,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ```
+
+<!--Links-->
+[1]: https://github.com/ionescu007/lxss
+[2]: https://github.com/ionescu007/lxss/blob/master/LICENSE
+[3]: https://github.com/processhacker/processhacker/tree/master/phnt
+[4]: https://github.com/processhacker/processhacker/blob/master/LICENSE.txt

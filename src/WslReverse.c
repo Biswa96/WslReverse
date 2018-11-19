@@ -1,5 +1,5 @@
 #include "Functions.h"
-#include "CreateLxProcess.h"
+#include "CreateLxProcess.h" // include WslSession.h
 #include "wgetopt.h"
 #include <stdio.h>
 
@@ -18,7 +18,7 @@ int main()
         return 0;
     }
 
-    /*Declare variables*/
+    // Declare variables
     int c;
     HRESULT result = 0;
     ULONG Version, DefaultUid, Flags, EnvironmentCount;
@@ -26,7 +26,7 @@ int main()
     wchar_t GuidString[GUID_STRING];
     PWslSession* wslSession = NULL;
 
-    /*Option table*/
+    // Option table
     const struct option OptionTable[] = {
         { L"get-id",        required_argument,   0,  'd' },
         { L"get-default",   no_argument,         0,  'G' },
@@ -44,7 +44,7 @@ int main()
 
     CoInitializeEx(0, COINIT_MULTITHREADED);
     CoInitializeSecurity(0, -1, 0, 0, RPC_C_AUTHN_LEVEL_DEFAULT, SecurityDelegation, 0, EOAC_STATIC_CLOAKING, 0);
-    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (PVOID*)&wslSession);
+    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (void**)&wslSession);
     Log(result, L"CoCreateInstance");
 
     while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:lr:S:s:t:u:", OptionTable, 0)) != -1)
@@ -61,8 +61,8 @@ int main()
         {
             result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DefaultDistroId);
             PrintGuid(&DefaultDistroId, GuidString);
-            wprintf(L"%ls: %ls\n", optarg, GuidString);
             Log(result, L"GetDistributionId");
+            wprintf(L"%ls: %ls\n", optarg, GuidString);
             break;
         }
         case 'G':
@@ -103,10 +103,10 @@ int main()
         {
             wchar_t TarFilePath[MAX_PATH], BasePath[MAX_PATH];
             wprintf(L"Enter full path of .tar.gz file (without quote): ");
-            wscanf(L"%ls", TarFilePath);
+            wscanf_s(L"%ls", TarFilePath, MAX_PATH);
 
             wprintf(L"Enter folder path where to install (without quote): ");
-            wscanf(L"%ls", BasePath);
+            wscanf_s(L"%ls", BasePath, MAX_PATH);
 
             CoCreateGuid(&DistroId);
 

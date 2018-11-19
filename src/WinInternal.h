@@ -1,12 +1,24 @@
+#ifndef WININTERNAL_H
+#define WININTERNAL_H
+
 #include <Windows.h>
 #include <winternl.h>
 
-#ifndef CTL_CODE
-#define FILE_ANY_ACCESS 0
-#define METHOD_NEITHER 3
-#define CTL_CODE( DeviceType, Function, Method, Access ) \
-    (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
-#endif
+// From DetoursNT/DetoursNT.h
+#define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
+#define ZwCurrentProcess() NtCurrentProcess()
+#define NtCurrentThread() ((HANDLE)(LONG_PTR)-2)
+#define ZwCurrentThread() NtCurrentThread()
+
+// From processhacker/phlib/include/phsup.h
+#define TICKS_PER_NS ((long long)1 * 10)
+#define TICKS_PER_MS (TICKS_PER_NS * 1000)
+#define TICKS_PER_SEC (TICKS_PER_MS * 1000)
+#define TICKS_PER_MIN (TICKS_PER_SEC * 60)
+
+// Some handmade
+#define ToULong(x) (unsigned long)(unsigned long long)(x)
+#define ToHandle(x) (void*)(unsigned long long)(x)
 
 typedef struct _CURDIR {
     UNICODE_STRING DosPath;
@@ -22,7 +34,7 @@ typedef struct _RTL_DRIVE_LETTER_CURDIR {
 
 #define RTL_MAX_DRIVE_LETTERS 32
 
-// Replace with "X_" prefix to remove conflict
+// "X_" prefix is used to remove conflict
 // with the predefined structure in winternl.h
 
 typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
@@ -62,15 +74,9 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     UNICODE_STRING RedirectionDllName;
 } X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
 
-// Type casting is used to get offsets of standard handles
-// Added in CreateLxProcess.c file
-
-static __inline X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void)
-{
-    return (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->
-        ProcessEnvironmentBlock->
-        ProcessParameters;
-}
+// Cast the pre-defined structure with X_ prefixed one
+#define UserProcessParameter() \
+    (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
 
 #ifdef _MSC_VER
 
@@ -102,7 +108,40 @@ NTSTATUS NtQueryVolumeInformationFile(
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_ PVOID FsInformation,
     _In_ ULONG Length,
-    _In_ FSINFOCLASS FsInformationClass
-);
+    _In_ FSINFOCLASS FsInformationClass);
 
 #endif // _MSC_VER
+
+NTSTATUS NtReadFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_ PVOID Buffer,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key);
+
+NTSTATUS NtCancelIoFileEx(
+    _In_ HANDLE FileHandle,
+    _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock);
+
+NTSTATUS NtCreateNamedPipeFile(
+    _Out_ PHANDLE NamedPipeFileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG CreateDisposition,
+    _In_ ULONG CreateOptions,
+    _In_ ULONG WriteModeMessage,
+    _In_ ULONG ReadModeMessage,
+    _In_ ULONG NonBlocking,
+    _In_ ULONG MaxInstances,
+    _In_ ULONG InBufferSize,
+    _In_ ULONG OutBufferSize,
+    _In_ PLARGE_INTEGER DefaultTimeOut);
+
+#endif // WININTERNAL_H

@@ -1,23 +1,31 @@
 #include <Windows.h>
 #include <stdio.h>
 
-void Log(HRESULT Result, PWSTR Function)
+void Log(
+    unsigned long Result,
+    wchar_t* Function)
 {
-    if (Result != 0)
-    {
-        PWSTR MsgBuffer = NULL;
-        FormatMessageW(
-            (FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                FORMAT_MESSAGE_FROM_SYSTEM |
-                FORMAT_MESSAGE_IGNORE_INSERTS),
-            NULL, Result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (PWSTR)&MsgBuffer, 0, NULL);
-        wprintf(L"%ls Error: %ld\n%ls", Function, (Result & 0xFFFF), MsgBuffer);
-        LocalFree(MsgBuffer);
-    }
+    wchar_t* MsgBuffer = NULL;
+    FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        Result,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (wchar_t*)&MsgBuffer,
+        0,
+        NULL);
+
+    wprintf(
+        L"[+] %ls Status: %ld\t %ls",
+        Function, (Result & 0xFFFF), MsgBuffer);
+
+    LocalFree(MsgBuffer);
 }
 
-void Usage(void)
+void Usage(
+    void)
 {
     wprintf(
         L"\nWslReverse -- (c) Copyright 2018 Biswapriyo Nath\n"
@@ -38,14 +46,18 @@ void Usage(void)
         L"  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
         L"\n"
     );
-    return;
 }
 
 #define GUID_STRING 40
 
-void PrintGuid(GUID* id, PWSTR string)
+void PrintGuid(
+    GUID* id,
+    wchar_t* string)
 {
-    swprintf(string, GUID_STRING,
+    _snwprintf_s(
+        string,
+        GUID_STRING,
+        GUID_STRING,
         L"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
         id->Data1, id->Data2, id->Data3,
         id->Data4[0], id->Data4[1], id->Data4[2],
