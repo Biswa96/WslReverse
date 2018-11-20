@@ -6,7 +6,7 @@ void Log(
     wchar_t* Function)
 {
     wchar_t* MsgBuffer = NULL;
-    FormatMessageW(
+    unsigned long tChars = FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -17,9 +17,19 @@ void Log(
         0,
         NULL);
 
-    wprintf(
-        L"[+] %ls Status: %ld\t %ls",
-        Function, (Result & 0xFFFF), MsgBuffer);
+    if (tChars)
+    {
+        wprintf(
+            L"[+] %ls Status: %ld\t %ls",
+            Function, (Result & 0xFFFF), MsgBuffer);
+    }
+    else
+    {
+        wprintf(
+            L"[+] %ls Status: %ld\n",
+            Function, (Result & 0xFFFF));
+    }
+
 
     LocalFree(MsgBuffer);
 }

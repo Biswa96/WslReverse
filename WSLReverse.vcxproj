@@ -10,6 +10,7 @@
     <ClCompile Include="src\ConsolePid.c" />
     <ClCompile Include="src\CreateLxProcess.c" />
     <ClCompile Include="src\CreateProcessAsync.c" />
+    <ClCompile Include="src\CreateWinProcess.c" />
     <ClCompile Include="src\Functions.c" />
     <ClCompile Include="src\wgetopt.c" />
     <ClCompile Include="src\WslReverse.c" />
@@ -18,6 +19,7 @@
     <ClInclude Include="src\ConsolePid.h" />
     <ClInclude Include="src\CreateLxProcess.h" />
     <ClInclude Include="src\CreateProcessAsync.h" />
+    <ClInclude Include="src\CreateWinProcess.h" />
     <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\LxBus.h" />
     <ClInclude Include="src\wgetopt.h" />

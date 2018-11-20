@@ -10,7 +10,8 @@
     CTL_CODE(FILE_DEVICE_CONSOLE, 0x08, METHOD_NEITHER, FILE_ANY_ACCESS) //0x500023u
 
 void ConsolePid(
-    void* ConsoleHandle)
+    void* ConsoleHandle,
+    wchar_t* ConsoleName)
 {
     IO_STATUS_BLOCK IoStatusBlock;
     FILE_FS_DEVICE_INFORMATION FsInformation;
@@ -40,7 +41,8 @@ void ConsolePid(
         if (Status >= 0)
         {
             wprintf(
-                L"[*] ConHost PID: %lld Handle: %ld\n",
+                L"[*] %ls ConHost PID: %lld Handle: %ld\n",
+                ConsoleName,
                 ConHostPid,
                 HandleToULong(ConsoleHandle));
         } 

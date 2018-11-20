@@ -37,15 +37,20 @@ Here are the overview of source files according to their dependencies:
 ```
 src\
     |
-    +-- CreateProcessAsync: Create Windows process with LxBus IPC mechanism
-    +-- ConsolePid: Shows associated ConHost PID by IOCTL from condrv.sys
-    +-- WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS structure from PEB
-    +-- WslSession: LxssSession COM interface
+    +-- LxBus: Required IOCTLs and associated structures
+    +-- WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS and PEB structures
+    +-- CreateWinProcess: Create Windows process with LxBus server
+    +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
         |
+        |   +-- Functions: Helping functions to beautify console output
+        |   +-- ConsolePid: Shows associated ConHost PID by IOCTL from condrv.sys
+        |   +-- WslSession: LxssSession COM interface
+        |   |
+        |   |
         +-- CreateLxProcess: Run WSL pico processes
             |
-            |   +-- Function: Helping functions to manipulate input & output
             |   +-- wgetopt: Converted from Cygwin getopt file for wide characters
+            |   |
             |   |
             +-- WslReverse: Main function with option processing
 ```

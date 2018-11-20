@@ -6,7 +6,6 @@
 #include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
 
-#define STATUS_SUCCESS 0
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
 #define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
@@ -33,6 +32,7 @@ void CreateProcessWorker(
             L"[*] CreateProcessWorker ServerHandle: %lu\n",
             ToULong(ServerHandle));
 
+        // IoCreateFile creates \Device\lxss\{Instance-GUID}\MessagePort
         Status = NtDeviceIoControlFile(
             ServerHandle,
             NULL,
@@ -43,7 +43,7 @@ void CreateProcessWorker(
             &ConnectionMsg, sizeof(ConnectionMsg),
             &ConnectionMsg, sizeof(ConnectionMsg));
 
-        if (Status < STATUS_SUCCESS)
+        if (!NT_SUCCESS(Status))
             break;
 
         wprintf(
@@ -67,7 +67,6 @@ BOOL InitializeInterop(
     HANDLE ServerHandle,
     GUID* CurrentDistroID)
 {
-
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
     HANDLE ProcHandle, hServer, hProc = NtCurrentProcess();
 
@@ -116,8 +115,8 @@ BOOL InitializeInterop(
         ToULong(EventHandle),
         ToULong(ProcHandle));
 
-    PROCESS_INFORMATION ProcInfo = { 0 };
-    STARTUPINFOEXW SInfoEx = { 0 };
+    PROCESS_INFORMATION ProcInfo;
+    STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
     SInfoEx.StartupInfo.cb = sizeof(SInfoEx);
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
@@ -137,8 +136,12 @@ BOOL InitializeInterop(
         &ProcInfo);
 
     wprintf(
-        L"[*] CreateProcess CommandLine: %ls\n",
-        CommandLine);
+        L"[*] WslHost CommandLine: %ls\n"
+        L"[*] CreateLxProcess hProcess: %lu hThread: %lu dwProcessId: %lu\n",
+        CommandLine,
+        ToULong(ProcInfo.hProcess),
+        ToULong(ProcInfo.hThread),
+        ProcInfo.dwProcessId);
 
     if (bRes)
     {
@@ -162,6 +165,10 @@ BOOL InitializeInterop(
     return bRes;
 }
 
+// Cast the pre-defined structure with X_ prefixed one
+#define UserProcessParameter() \
+    (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
+
 HRESULT CreateLxProcess(
     PWslSession* WslSession,
     GUID* DistroID)
@@ -178,7 +185,7 @@ HRESULT CreateLxProcess(
     // Console Window handle of current process (if any)
     X_PRTL_USER_PROCESS_PARAMETERS ProcParam = UserProcessParameter();
     HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
-    ConsolePid(ConsoleHandle);
+    ConsolePid(ConsoleHandle, L"CreateLxProcess");
 
     // Preapare environments and argument
     char* Arguments[] = { "-bash" };
@@ -230,7 +237,7 @@ HRESULT CreateLxProcess(
     StdHandles.StdErr.Pipe = 2;
 #endif
 
-    long hRes = (*WslSession)->CreateLxProcess(
+    HRESULT hRes = (*WslSession)->CreateLxProcess(
         WslSession,
         DistroID,
         "/bin/bash",
@@ -264,25 +271,26 @@ HRESULT CreateLxProcess(
         if (SetHandleInformation(ProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
             IO_STATUS_BLOCK Isb;
-            unsigned long ExitStatus = INFINITE;
+            LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
+            WaitForSignalMsg.ExitStatus = INFINITE;
 
             InitializeInterop(ServerHandle, &InitiatedDistroId);
 
             // Use the IOCTL to wait on the process to terminate
-            long Status = NtDeviceIoControlFile(
+            NTSTATUS Status = NtDeviceIoControlFile(
                 ProcessHandle,
                 NULL,
                 NULL,
                 NULL,
                 &Isb,
                 IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
-                &ExitStatus, sizeof(ExitStatus),
-                &ExitStatus, sizeof(ExitStatus));
+                &WaitForSignalMsg, sizeof(WaitForSignalMsg),
+                &WaitForSignalMsg, sizeof(WaitForSignalMsg));
 
-            if (Status >= STATUS_SUCCESS)
+            if (!NT_SUCCESS(Status))
             {
-                GetExitCodeProcess(ProcessHandle, &ExitStatus);
-                wprintf(L"[*] ExitStatus: %lu\n", ExitStatus);
+                GetExitCodeProcess(ProcessHandle, &WaitForSignalMsg.ExitStatus);
+                Log(WaitForSignalMsg.ExitStatus, L"WaitForSignalMsg");
             }
         }
     }
