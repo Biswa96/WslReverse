@@ -2,11 +2,12 @@
 #define CREATEWINPROCESS_H
 
 #include "WinInternal.h"
+#include "LxBus.h" // For LXSS_MESSAGE_PORT_RECEIVE_OBJECT struct
 
 typedef struct _LX_CREATE_PROCESS_RESULT {
     PROCESS_INFORMATION ProcInfo;
     ULONG LastError;
-    BOOLEAN IsGUISubsystem;
+    BOOLEAN IsSubsystemGUI;
     HPCON hpCon;
 } LX_CREATE_PROCESS_RESULT, *PLX_CREATE_PROCESS_RESULT;
 
@@ -15,17 +16,7 @@ NTSTATUS OpenAnonymousPipe(
     PHANDLE WritePipeHandle);
 
 BOOL CreateWinProcess(
-    BOOLEAN IsWithoutPipe,
-    COORD* ConsoleSize,
-    HANDLE hStdInput,
-    HANDLE hStdOutput,
-    HANDLE hStdError,
-    PSTR ApplicationName,
-    PSTR CurrentDirectory,
-    PLX_CREATE_PROCESS_RESULT ProcResult);
-
-ULONG ProcessInteropMessages(
-    HANDLE ReadPipeHandle,
+    PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     PLX_CREATE_PROCESS_RESULT ProcResult);
 
 #endif //CREATEWINPROCESS_H

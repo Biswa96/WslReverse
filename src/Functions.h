@@ -3,12 +3,13 @@
 
 #include <wchar.h>
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
+#define GUID_STRING 40
+typedef struct _GUID GUID;
+
 void Log(
     unsigned long Result,
     wchar_t* Function);
-
-#define GUID_STRING 40
-typedef struct _GUID GUID;
 
 void PrintGuid(
     GUID* id,

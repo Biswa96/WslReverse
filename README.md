@@ -43,7 +43,7 @@ src\
     +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
         |
         |   +-- Functions: Helping functions to beautify console output
-        |   +-- ConsolePid: Shows associated ConHost PID by IOCTL from condrv.sys
+        |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
         |   +-- WslSession: LxssSession COM interface
         |   |
         |   |
@@ -67,6 +67,11 @@ This project uses some definitions and data types from followings. Thanks to:
 
 * Alex Ionescu for [lxss project][1] and all the IOCTLs details ([MIT License][2]). 
 * Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API header files][3] ([GPLv3 License][4]). 
+
+## Contributing
+
+* For programmers: Need ideas to connect WSL with any other terminals like [mintty][5] without any ELF backend or any extra modules which creates extra processes. 
+* For non-programmers: Provide some beautiful names for the structures and constant values used in `CreateProcessAsync.c` file. 
 
 ## License 
 
@@ -94,3 +99,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 [2]: https://github.com/ionescu007/lxss/blob/master/LICENSE
 [3]: https://github.com/processhacker/processhacker/tree/master/phnt
 [4]: https://github.com/processhacker/processhacker/blob/master/LICENSE.txt
+[5]: https://github.com/mintty/mintty

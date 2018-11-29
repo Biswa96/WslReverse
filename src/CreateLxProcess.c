@@ -1,12 +1,10 @@
-#include "ConsolePid.h"
+#include "GetConhostServerId.h"
 #include "CreateProcessAsync.h"
 #include "Functions.h"
 #include "WslSession.h"
 #include "WinInternal.h" // some defined expression
 #include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
-
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
 #define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
 #define REQUIRED_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
@@ -65,8 +63,11 @@ void CreateProcessWorker(
 
 BOOL InitializeInterop(
     HANDLE ServerHandle,
-    GUID* CurrentDistroID)
+    GUID* CurrentDistroID,
+    GUID* LxInstanceID)
 {
+    UNREFERENCED_PARAMETER(LxInstanceID); // For future use in Hyper-V VM Mode
+
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
     HANDLE ProcHandle, hServer, hProc = NtCurrentProcess();
 
@@ -137,7 +138,7 @@ BOOL InitializeInterop(
 
     wprintf(
         L"[*] WslHost CommandLine: %ls\n"
-        L"[*] CreateLxProcess hProcess: %lu hThread: %lu dwProcessId: %lu\n",
+        L"[*] WslHost hProcess: %lu hThread: %lu dwProcessId: %lu\n",
         CommandLine,
         ToULong(ProcInfo.hProcess),
         ToULong(ProcInfo.hThread),
@@ -175,7 +176,7 @@ HRESULT CreateLxProcess(
 {
     ULONG InputMode = 0, OutputMode = 0;
     HANDLE ProcessHandle, ServerHandle;
-    GUID InitiatedDistroId, LxInstanceID;
+    GUID InitiatedDistroID, LxInstanceID;
     COORD WindowSize;
     PVOID socket = NULL;
 
@@ -185,7 +186,10 @@ HRESULT CreateLxProcess(
     // Console Window handle of current process (if any)
     X_PRTL_USER_PROCESS_PARAMETERS ProcParam = UserProcessParameter();
     HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
-    ConsolePid(ConsoleHandle, L"CreateLxProcess");
+    wprintf(
+        L"[*] CreateLxProcess ConHost PID: %lld Handle: %ld\n",
+        GetConhostServerId(ConsoleHandle),
+        ToULong(ConsoleHandle));
 
     // Preapare environments and argument
     char* Arguments[] = { "-bash" };
@@ -223,6 +227,7 @@ HRESULT CreateLxProcess(
 
     // Set console size from screen buffer co-ordinates
     CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer = { 0 };
+    ConBuffer.cbSize = sizeof(ConBuffer);
     GetConsoleScreenBufferInfoEx(hOut, &ConBuffer);
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
@@ -252,7 +257,7 @@ HRESULT CreateLxProcess(
         WindowSize.Y,
         ToULong(ConsoleHandle),
         &StdHandles,
-        &InitiatedDistroId,
+        &InitiatedDistroID,
         &LxInstanceID,
         &ProcessHandle,
         &ServerHandle,
@@ -260,6 +265,7 @@ HRESULT CreateLxProcess(
         &socket,
         &socket,
         &socket);
+    Log(hRes, L"CreateLxProcess");
 
     if (hRes >= ERROR_SUCCESS)
     {
@@ -272,9 +278,9 @@ HRESULT CreateLxProcess(
         {
             IO_STATUS_BLOCK Isb;
             LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
-            WaitForSignalMsg.ExitStatus = INFINITE;
+            WaitForSignalMsg.TimeOut = INFINITE;
 
-            InitializeInterop(ServerHandle, &InitiatedDistroId);
+            InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
 
             // Use the IOCTL to wait on the process to terminate
             NTSTATUS Status = NtDeviceIoControlFile(
@@ -287,11 +293,8 @@ HRESULT CreateLxProcess(
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg),
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg));
 
-            if (!NT_SUCCESS(Status))
-            {
-                GetExitCodeProcess(ProcessHandle, &WaitForSignalMsg.ExitStatus);
-                Log(WaitForSignalMsg.ExitStatus, L"WaitForSignalMsg");
-            }
+            if(NT_SUCCESS(Status))
+            Log(WaitForSignalMsg.ExitStatus, L"WaitForSignalMsg");
         }
     }
 

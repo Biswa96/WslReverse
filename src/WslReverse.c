@@ -3,9 +3,6 @@
 #include "wgetopt.h"
 #include <stdio.h>
 
-#define GUID_STRING 40
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
-
 int main()
 {
     int wargc;
@@ -175,7 +172,6 @@ int main()
             if (result < 0)
                 return result;
             result = CreateLxProcess(wslSession, &DistroId);
-            Log(result, L"CreateLxProcess");
             break;
         }
         case 'S':

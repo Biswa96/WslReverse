@@ -1,15 +1,10 @@
 #ifndef LXBUS_H
 #define LXBUS_H
 
-// Suppress warnings
-#pragma warning(push)
-#pragma warning(disable:4201 4214)
-#pragma pack(push, 1)
-
 #ifndef CTL_CODE
 #define FILE_ANY_ACCESS 0
 #define METHOD_NEITHER 3
-#define FILE_DEVICE_UNKNOWN 0x00000022
+#define FILE_DEVICE_UNKNOWN 0x22
 #define CTL_CODE( DeviceType, Function, Method, Access ) \
     (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
 #endif
@@ -19,8 +14,8 @@
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS) //0x220033u
 
 typedef union _LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG {
-    unsigned long Timeout;
-    unsigned long ClientHandle;
+    unsigned int Timeout;
+    unsigned int ClientHandle;
 } LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG, *PLXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG;
 
 // LxCore!LxBuspIpcConnectionMarshalHandle
@@ -35,13 +30,13 @@ typedef enum _LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE {
     NtOutputPipeType
 } LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE;
 
-typedef union _LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_MSG {
+typedef union _LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA {
     struct {
-        unsigned long Handle;
+        unsigned int Handle;
         LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE Type;
     };
     unsigned long long HandleIdCount;
-} LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_MSG;
+} LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA;
 
 // LxCore!LxBuspIpcConnectionUnmarshalVfsFile
 #define IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE \
@@ -49,7 +44,7 @@ typedef union _LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_MSG {
 
 typedef union _LXBUS_IPC_VFS_HANDLE {
     struct {
-        unsigned long Handle;
+        unsigned int Handle;
         LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE Type;
     };
     unsigned long long HandleIdCount;
@@ -57,29 +52,43 @@ typedef union _LXBUS_IPC_VFS_HANDLE {
 
 #define TOTAL_IO_HANDLES 3
 
-typedef struct _LXSS_MESSAGE_PORT_OBJECT {
-    unsigned long NumberOfBytesToRead;
-    unsigned long BufferSize;
+#pragma pack(push, 1)
+typedef struct _LXSS_MESSAGE_PORT_RECEIVE_OBJECT {
+    unsigned int NumberOfBytesToRead;
+    unsigned int BufferSize;
     LXBUS_IPC_VFS_HANDLE VfsHandle[TOTAL_IO_HANDLES];
     char Unknown[32];
-    unsigned long WinApplicationPathOffset;
-    unsigned long WinCurrentPathOffset;
-    unsigned long WinCommandArgumentOffset;
-    unsigned long WinCommandArgumentCount;
-    unsigned long WslEnvOffset;
+    unsigned int WinApplicationPathOffset;
+    unsigned int WinCurrentPathOffset;
+    unsigned int WinCommandArgumentOffset;
+    unsigned int WinCommandArgumentCount;
+    unsigned int WslEnvOffset;
     unsigned short WindowHeight;
     unsigned short WindowWidth;
     unsigned char IsWithoutPipe;
-} LXSS_MESSAGE_PORT_OBJECT, *PLXSS_MESSAGE_PORT_OBJECT;
+} LXSS_MESSAGE_PORT_RECEIVE_OBJECT, *PLXSS_MESSAGE_PORT_RECEIVE_OBJECT;
+#pragma pack (pop)
+
+// Interop Flags
+#define RESTORE_CONSOLE_STATE_MODE 1 // restored by tcsetattr TCSETS ioctl and STDIN_FILENO file
+
+typedef struct _LXSS_MESSAGE_PORT_SEND_OBJECT {
+    unsigned int CreateNtProcessFlag;
+    unsigned int BufferSize;
+    unsigned int LastError;
+    unsigned int UnknownA;
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg;
+    unsigned int IsSubsystemGUI;
+    unsigned int UnknownB;
+} LXSS_MESSAGE_PORT_SEND_OBJECT, *PLXSS_MESSAGE_PORT_SEND_OBJECT;
 
 // LxCore!LxpControlDeviceIoctlLxProcess
 #define IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x34, METHOD_NEITHER, FILE_ANY_ACCESS) //0x2200D3u
 
-typedef struct _LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG {
-    unsigned long ExitStatus;
+typedef union _LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG {
+    unsigned int TimeOut;
+    unsigned int ExitStatus;
 } LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG, *PLXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG;
 
-#pragma pack (pop)
-#pragma warning(pop)
 #endif //LXBUS_H

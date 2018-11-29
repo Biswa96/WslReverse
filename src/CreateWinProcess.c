@@ -12,7 +12,7 @@ NTSTATUS OpenAnonymousPipe(
     HANDLE hNamedPipeFile = NULL, hFile = NULL;
     LARGE_INTEGER DefaultTimeOut;
     IO_STATUS_BLOCK IoStatusBlock;
-    UNICODE_STRING ObjName = { 0 };
+    UNICODE_STRING PipeObj = { 0 };
     OBJECT_ATTRIBUTES ObjectAttributes = { 0 };
 
     HANDLE hPipeServer = CreateFileW(
@@ -25,10 +25,10 @@ NTSTATUS OpenAnonymousPipe(
         NULL);
 
     if (hPipeServer == INVALID_HANDLE_VALUE)
-        Log(GetLastError(), L"CreateFileW");
+        Log(GetLastError(), L"CreateFileW pipe");
 
     DefaultTimeOut.QuadPart = -2 * TICKS_PER_MIN;
-    ObjectAttributes.ObjectName = &ObjName;
+    ObjectAttributes.ObjectName = &PipeObj;
     ObjectAttributes.RootDirectory = hPipeServer;
     ObjectAttributes.Length = sizeof(ObjectAttributes);
 
@@ -51,7 +51,8 @@ NTSTATUS OpenAnonymousPipe(
 
     ObjectAttributes.Length = sizeof(ObjectAttributes);
     ObjectAttributes.RootDirectory = hNamedPipeFile;
-    ObjectAttributes.ObjectName = &ObjName;
+    ObjectAttributes.ObjectName = &PipeObj;
+
     Status = NtOpenFile(
         &hFile,
         GENERIC_WRITE | SYNCHRONIZE | FILE_READ_ATTRIBUTES,
@@ -69,20 +70,13 @@ NTSTATUS OpenAnonymousPipe(
 }
 
 BOOL CreateWinProcess(
-    BOOLEAN IsWithoutPipe,
-    COORD* ConsoleSize,
-    HANDLE hStdInput,
-    HANDLE hStdOutput,
-    HANDLE hStdError,
-    PSTR ApplicationName,
-    PSTR CurrentDirectory,
+    PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
     BOOL bRes;
-    HRESULT hRes;
-    HPCON hpCon;
-    SIZE_T AttrSize, ReadSize;
-    STARTUPINFOEXA SInfoEx = { 0 }; // Must set all members to Zero
+    HPCON hpCon = NULL;
+    SIZE_T AttrSize;
+    STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
     PROCESS_BASIC_INFORMATION BasicInfo;
     PEB64 Peb;
 
@@ -90,12 +84,18 @@ BOOL CreateWinProcess(
     LPPROC_THREAD_ATTRIBUTE_LIST AttrList = malloc(AttrSize);
     InitializeProcThreadAttributeList(AttrList, 1, 0, &AttrSize);
 
-    if (IsWithoutPipe)
+    if (LxReceiveMsg->IsWithoutPipe)
     {
-        hRes = CreatePseudoConsole(
-            *ConsoleSize,
-            hStdInput,
-            hStdOutput, PSEUDOCONSOLE_INHERIT_CURSOR, &hpCon);
+        COORD ConsoleSize;
+        ConsoleSize.X = LxReceiveMsg->WindowWidth;
+        ConsoleSize.Y = LxReceiveMsg->WindowHeight;
+
+        HRESULT hRes = CreatePseudoConsole(
+            ConsoleSize,
+            ToHandle(LxReceiveMsg->VfsHandle[0].Handle),
+            ToHandle(LxReceiveMsg->VfsHandle[1].Handle),
+            PSEUDOCONSOLE_INHERIT_CURSOR,
+            &hpCon);
 
         // Return hpCon to caller
         ProcResult->hpCon = hpCon;
@@ -107,14 +107,15 @@ BOOL CreateWinProcess(
     }
     else
     {
-        SInfoEx.StartupInfo.hStdInput = hStdInput;
-        SInfoEx.StartupInfo.hStdOutput = hStdOutput;
-        SInfoEx.StartupInfo.hStdError = hStdError;
+        SInfoEx.StartupInfo.hStdInput = ToHandle(LxReceiveMsg->VfsHandle[0].Handle);
+        SInfoEx.StartupInfo.hStdOutput = ToHandle(LxReceiveMsg->VfsHandle[1].Handle);
+        SInfoEx.StartupInfo.hStdError = ToHandle(LxReceiveMsg->VfsHandle[2].Handle);
 
         HANDLE Value[3] = { NULL };
-        Value[0] = hStdInput;
-        Value[1] = hStdOutput;
-        Value[2] = hStdError;
+        Value[0] = ToHandle(LxReceiveMsg->VfsHandle[0].Handle);
+        Value[1] = ToHandle(LxReceiveMsg->VfsHandle[1].Handle);
+        Value[2] = ToHandle(LxReceiveMsg->VfsHandle[2].Handle);
+
         bRes = UpdateProcThreadAttribute(
             AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
             Value, sizeof(Value), NULL, NULL);
@@ -122,18 +123,25 @@ BOOL CreateWinProcess(
 
     SInfoEx.StartupInfo.cb = sizeof(SInfoEx);
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-    SInfoEx.StartupInfo.lpDesktop = "winsta0\\default";
+    SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
     SInfoEx.lpAttributeList = AttrList;
 
-    bRes = CreateProcessA(
-        ApplicationName,
+    WCHAR w_ApplicationName[MAX_PATH], w_CurrentDirectory[MAX_PATH];
+    PSTR ApplicationName = LxReceiveMsg->Unknown + LxReceiveMsg->WinApplicationPathOffset;
+    PSTR CurrentDirectory = LxReceiveMsg->Unknown + LxReceiveMsg->WinCurrentPathOffset;
+
+    mbstowcs_s(NULL, w_ApplicationName, MAX_PATH, ApplicationName, MAX_PATH);
+    mbstowcs_s(NULL, w_CurrentDirectory, MAX_PATH, CurrentDirectory, MAX_PATH);
+
+    bRes = CreateProcessW(
+        w_ApplicationName,
         NULL,
         NULL,
         NULL,
         TRUE,
         EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
         NULL,
-        CurrentDirectory,
+        w_CurrentDirectory,
         &SInfoEx.StartupInfo,
         &ProcResult->ProcInfo);
 
@@ -157,24 +165,16 @@ BOOL CreateWinProcess(
             BasicInfo.PebBaseAddress,
             &Peb,
             sizeof(PEB64),
-            &ReadSize);
+            NULL);
 
         // From IMAGE_OPTIONAL_HEADER structure
         if (Peb.ImageSubsystemMinorVersion == IMAGE_SUBSYSTEM_WINDOWS_GUI)
-            ProcResult->IsGUISubsystem = TRUE;
+            ProcResult->IsSubsystemGUI |= RESTORE_CONSOLE_STATE_MODE;
     }
+
+    // Set lasterror always success intentionally
+    ProcResult->LastError = ERROR_SUCCESS;
 
     free(AttrList);
     return bRes;
-}
-
-ULONG ProcessInteropMessages(
-    HANDLE ReadPipeHandle,
-    PLX_CREATE_PROCESS_RESULT ProcResult)
-{
-    UNREFERENCED_PARAMETER(ReadPipeHandle);
-    UNREFERENCED_PARAMETER(ProcResult);
-
-    DWORD ExitCode = 1;
-    return ExitCode;
 }

@@ -11,13 +11,16 @@ set CFLAGS=/c /nologo /O1 /MD /W4 /Fo%BINDIR%\\
 set LFLAGS=/nologo /MACHINE:X64
 set LIBS=Ole32.lib Shell32.lib NtDll.lib
 
+::Disable warnings
+set CCOPT=/wd"4201" /wd"4214"
+
 ::Build
 rd /s /q %BINDIR%
 mkdir %BINDIR%
-cl.exe %CFLAGS% src\*.c
+cl.exe %CFLAGS% %CCOPT% src\*.c
 link.exe %LFLAGS% %LIBS% %BINDIR%\*.obj /OUT:%BINDIR%\%NAME%
 
-dir %BINDIR%\*.exe
+dir /B %BINDIR%\*.exe
 pause
 exit /b
 

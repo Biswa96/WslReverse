@@ -7,7 +7,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ConsolePid.c" />
+    <ClCompile Include="src\GetConhostServerId.c" />
     <ClCompile Include="src\CreateLxProcess.c" />
     <ClCompile Include="src\CreateProcessAsync.c" />
     <ClCompile Include="src\CreateWinProcess.c" />
@@ -16,7 +16,7 @@
     <ClCompile Include="src\WslReverse.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ConsolePid.h" />
+    <ClInclude Include="src\GetConhostServerId.h" />
     <ClInclude Include="src\CreateLxProcess.h" />
     <ClInclude Include="src\CreateProcessAsync.h" />
     <ClInclude Include="src\CreateWinProcess.h" />
@@ -57,6 +57,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
+      <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>

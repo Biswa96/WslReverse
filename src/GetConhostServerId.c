@@ -9,13 +9,12 @@
 #define IOCTL_CDP_FAST_CONNECTION \
     CTL_CODE(FILE_DEVICE_CONSOLE, 0x08, METHOD_NEITHER, FILE_ANY_ACCESS) //0x500023u
 
-void ConsolePid(
-    void* ConsoleHandle,
-    wchar_t* ConsoleName)
+unsigned long long GetConhostServerId(
+    void* ConsoleHandle)
 {
     IO_STATUS_BLOCK IoStatusBlock;
     FILE_FS_DEVICE_INFORMATION FsInformation;
-    ULONG64 ConHostPid = 0;
+    unsigned long long ConHostPid = 0;
     NTSTATUS Status;
 
     Status = NtQueryVolumeInformationFile(
@@ -39,12 +38,8 @@ void ConsolePid(
             &ConHostPid, sizeof(ConHostPid));
 
         if (Status >= 0)
-        {
-            wprintf(
-                L"[*] %ls ConHost PID: %lld Handle: %ld\n",
-                ConsoleName,
-                ConHostPid,
-                HandleToULong(ConsoleHandle));
-        } 
+            return ConHostPid;
     }
+
+    return 0;
 }

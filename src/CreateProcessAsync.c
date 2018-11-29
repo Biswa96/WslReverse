@@ -1,11 +1,10 @@
-#include "CreateWinProcess.h" // include WinInternal.h
+#include "CreateWinProcess.h" // include WinInternal.h and LxBus.h
 #include "Functions.h"
-#include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
 
 NTSTATUS WaitForMessage(
     HANDLE ClientHandle,
-    HANDLE hEvent,
+    HANDLE EventHandle,
     PIO_STATUS_BLOCK IoStatusBlock)
 {
     NTSTATUS Status;
@@ -13,14 +12,24 @@ NTSTATUS WaitForMessage(
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
-    Status = NtWaitForSingleObject(hEvent, FALSE, &Timeout);
+    Status = NtWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
         NtCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
-        Status = NtWaitForSingleObject(hEvent, FALSE, NULL);
+        Status = NtWaitForSingleObject(EventHandle, FALSE, NULL);
     }
 
     return Status;
+}
+
+ULONG ProcessInteropMessages(
+    HANDLE ReadPipeHandle,
+    PLX_CREATE_PROCESS_RESULT ProcResult)
+{
+    UNREFERENCED_PARAMETER(ReadPipeHandle);
+    UNREFERENCED_PARAMETER(ProcResult);
+    DWORD ExitCode = ERROR_INVALID_FUNCTION;
+    return ExitCode;
 }
 
 void CreateProcessAsync(
@@ -32,27 +41,32 @@ void CreateProcessAsync(
     UNREFERENCED_PARAMETER(Work);
 
     BOOL bRes;
-    IO_STATUS_BLOCK Isb;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER ByteOffset = { 0 };
-    LXSS_MESSAGE_PORT_OBJECT Buffer;
+    LXSS_MESSAGE_PORT_RECEIVE_OBJECT Buffer;
+    PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg = NULL;
     LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
 
     // Create an event to sync all reads and writes
-    HANDLE hEvent = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
+    HANDLE EventHandle = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
 
     // Receive messages from client handle
-    NTSTATUS Status = NtReadFile(ClientHandle, hEvent, NULL, NULL, &Isb, &Buffer, sizeof(Buffer), &ByteOffset, NULL);
-    PLXSS_MESSAGE_PORT_OBJECT LxMsg = malloc(Buffer.NumberOfBytesToRead);
-    Status = NtReadFile(ClientHandle, hEvent, NULL, NULL, &Isb, LxMsg, Buffer.NumberOfBytesToRead, &ByteOffset, NULL);
+    Status = NtReadFile(ClientHandle, EventHandle, NULL, NULL, &IoStatusBlock, &Buffer, sizeof(Buffer), &ByteOffset, NULL);
+    LxReceiveMsg = malloc(Buffer.NumberOfBytesToRead);
+    Status = NtReadFile(ClientHandle, EventHandle, NULL, NULL, &IoStatusBlock, LxReceiveMsg, Buffer.NumberOfBytesToRead, &ByteOffset, NULL);
     if (Status == STATUS_PENDING)
-        WaitForMessage(ClientHandle, hEvent, &Isb);
+        WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
     Log(Status, L"LxssMessagePortReceive");
 
     // Logging strings
-    printf("[*] ApplicationPath: %s\n", LxMsg->Unknown + LxMsg->WinApplicationPathOffset);
-    printf("[*] CommandArgument: %s\n", LxMsg->Unknown + LxMsg->WinCommandArgumentOffset);
-    printf("[*] CurrentPath: %s\n", LxMsg->Unknown + LxMsg->WinCurrentPathOffset);
-    printf("[*] WslEnv: %s\n", LxMsg->Unknown + LxMsg->WslEnvOffset);
+    wprintf(
+        L"[*] ApplicationPath: %hs\n[*] CommandArgument: %hs\n"
+        L"[*] CurrentPath: %hs\n[*] WslEnv: %hs\n",
+        LxReceiveMsg->Unknown + LxReceiveMsg->WinApplicationPathOffset,
+        LxReceiveMsg->Unknown + LxReceiveMsg->WinCommandArgumentOffset,
+        LxReceiveMsg->Unknown + LxReceiveMsg->WinCurrentPathOffset,
+        LxReceiveMsg->Unknown + LxReceiveMsg->WslEnvOffset);
 
     for (int i = 0; i < TOTAL_IO_HANDLES; i++)
     {
@@ -62,40 +76,27 @@ void CreateProcessAsync(
             NULL,
             NULL,
             NULL,
-            &Isb,
+            &IoStatusBlock,
             IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE,
-            &LxMsg->VfsHandle[i], sizeof(LxMsg->VfsHandle[i]),
-            &LxMsg->VfsHandle[i], sizeof(LxMsg->VfsHandle[i]));
+            &LxReceiveMsg->VfsHandle[i], sizeof(LxReceiveMsg->VfsHandle[i]),
+            &LxReceiveMsg->VfsHandle[i], sizeof(LxReceiveMsg->VfsHandle[i]));
 
         bRes = SetHandleInformation(
-            ToHandle(LxMsg->VfsHandle[i].Handle),
+            ToHandle(LxReceiveMsg->VfsHandle[i].Handle),
             HANDLE_FLAG_INHERIT,
             HANDLE_FLAG_INHERIT);
     }
 
-    COORD ConsoleSize;
-    ConsoleSize.X = LxMsg->WindowWidth;
-    ConsoleSize.Y = LxMsg->WindowHeight;
+    if(!CreateWinProcess(LxReceiveMsg, &ProcResult))
+        Log(bRes, L"CreateWinProcess");
 
+    //Make pipes for receving console resize message
     HANDLE hReadPipe, hWritePipe;
     Status = OpenAnonymousPipe(&hReadPipe, &hWritePipe);
     Log(Status, L"OpenAnonymousPipe");
 
-    bRes = CreateWinProcess(
-        LxMsg->IsWithoutPipe,
-        &ConsoleSize,
-        ToHandle(LxMsg->VfsHandle[0].Handle), // Input
-        ToHandle(LxMsg->VfsHandle[1].Handle), // Output
-        ToHandle(LxMsg->VfsHandle[2].Handle), // Error
-        LxMsg->Unknown + LxMsg->WinApplicationPathOffset,
-        LxMsg->Unknown + LxMsg->WinCurrentPathOffset,
-        &ProcResult);
-
-    if(!bRes)
-        Log(bRes, L"CreateWinProcess");
-
-    // Check handle then marshal to init
-    LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_MSG HandleMsg;
+    // Marshal hWritePipe handle to get struct winsize from TIOCGWINSZ ioctl
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg;
     HandleMsg.Handle = ToULong(hWritePipe);
     HandleMsg.Type = LxOutputPipeType;
 
@@ -104,16 +105,18 @@ void CreateProcessAsync(
         NULL,
         NULL,
         NULL,
-        &Isb,
+        &IoStatusBlock,
         IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_HANDLE,
         &HandleMsg, sizeof(HandleMsg),
         &HandleMsg, sizeof(HandleMsg));
 
+    ProcessInteropMessages(hReadPipe, &ProcResult);
+
     // Close pseudo console if command is without pipe
     // ClosePseudoConsole(ProcResult.hpCon);
 
-    free(LxMsg);
-    NtClose(hEvent);
+    free(LxReceiveMsg);
+    NtClose(EventHandle);
     NtClose(ProcResult.ProcInfo.hProcess);
     NtClose(ProcResult.ProcInfo.hThread);
     NtClose(hReadPipe);

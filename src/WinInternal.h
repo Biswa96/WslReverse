@@ -4,12 +4,10 @@
 #include <Windows.h>
 #include <winternl.h>
 
-// Suppress warnings
-#pragma warning(push)
-#pragma warning(disable:4201 4214)
-
 // From DetoursNT/DetoursNT.h
+#ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+#endif
 #define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
 #define ZwCurrentProcess() NtCurrentProcess()
 #define NtCurrentThread() ((HANDLE)(LONG_PTR)-2)
@@ -337,5 +335,4 @@ NTSTATUS NtCreateNamedPipeFile(
     _In_ ULONG OutBufferSize,
     _In_ PLARGE_INTEGER DefaultTimeOut);
 
-#pragma warning(pop)
 #endif // WININTERNAL_H
