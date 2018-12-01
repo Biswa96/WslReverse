@@ -5,6 +5,12 @@
 #define PSEUDOCONSOLE_INHERIT_CURSOR 0x1
 #endif
 
+#ifndef PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
+#define ProcThreadAttributePseudoConsole 22
+#define PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE \
+    ProcThreadAttributeValue (ProcThreadAttributePseudoConsole, FALSE, TRUE, FALSE)
+#endif
+
 NTSTATUS OpenAnonymousPipe(
     PHANDLE ReadPipeHandle,
     PHANDLE WritePipeHandle)
@@ -169,7 +175,7 @@ BOOL CreateWinProcess(
 
         // From IMAGE_OPTIONAL_HEADER structure
         if (Peb.ImageSubsystemMinorVersion == IMAGE_SUBSYSTEM_WINDOWS_GUI)
-            ProcResult->IsSubsystemGUI |= RESTORE_CONSOLE_STATE_MODE;
+            ProcResult->IsSubsystemGUI |= INTEROP_RESTORE_CONSOLE_STATE_MODE;
     }
 
     // Set lasterror always success intentionally

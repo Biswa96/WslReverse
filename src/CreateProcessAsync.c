@@ -26,9 +26,43 @@ ULONG ProcessInteropMessages(
     HANDLE ReadPipeHandle,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
-    UNREFERENCED_PARAMETER(ReadPipeHandle);
-    UNREFERENCED_PARAMETER(ProcResult);
-    DWORD ExitCode = ERROR_INVALID_FUNCTION;
+    DWORD ExitCode;
+    IO_STATUS_BLOCK Isb;
+    LARGE_INTEGER ByteOffset = { 0 };
+    COORD ConsoleSize = { 0 };
+    LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg = { 0 };
+
+    // Create an event to sync all reads and writes
+    HANDLE EventHandle = CreateEventExW(
+        NULL,
+        NULL,
+        CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET,
+        EVENT_ALL_ACCESS);
+
+    HANDLE Handles[2];
+    Handles[0] = EventHandle;
+    Handles[1] = ProcResult->ProcInfo.hProcess;
+
+    // Read buffer from TIOCGWINSZ ioctl
+    NTSTATUS Status = NtReadFile(
+        ReadPipeHandle,
+        EventHandle,
+        NULL,
+        NULL,
+        &Isb,
+        &LxTerminalMsg,
+        sizeof(LxTerminalMsg),
+        &ByteOffset,
+        NULL);
+    if (Status == STATUS_PENDING)
+        WaitForMultipleObjects(ARRAY_SIZE(Handles), Handles, FALSE, INFINITE); // Temporary solution
+
+    GetExitCodeProcess(ProcResult->ProcInfo.hProcess, &ExitCode);
+    ConsoleSize.X = LxTerminalMsg.WindowWidth;
+    ConsoleSize.Y = LxTerminalMsg.WindowHeight;
+    ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
+
+    NtClose(EventHandle);
     return ExitCode;
 }
 
@@ -41,7 +75,6 @@ void CreateProcessAsync(
     UNREFERENCED_PARAMETER(Work);
 
     BOOL bRes;
-    NTSTATUS Status;
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER ByteOffset = { 0 };
     LXSS_MESSAGE_PORT_RECEIVE_OBJECT Buffer;
@@ -52,9 +85,28 @@ void CreateProcessAsync(
     HANDLE EventHandle = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
 
     // Receive messages from client handle
-    Status = NtReadFile(ClientHandle, EventHandle, NULL, NULL, &IoStatusBlock, &Buffer, sizeof(Buffer), &ByteOffset, NULL);
+    NTSTATUS Status = NtReadFile(
+        ClientHandle,
+        EventHandle,
+        NULL,
+        NULL,
+        &IoStatusBlock,
+        &Buffer,
+        sizeof(Buffer),
+        &ByteOffset,
+        NULL);
+
     LxReceiveMsg = malloc(Buffer.NumberOfBytesToRead);
-    Status = NtReadFile(ClientHandle, EventHandle, NULL, NULL, &IoStatusBlock, LxReceiveMsg, Buffer.NumberOfBytesToRead, &ByteOffset, NULL);
+    Status = NtReadFile(
+        ClientHandle,
+        EventHandle,
+        NULL,
+        NULL,
+        &IoStatusBlock,
+        LxReceiveMsg,
+        Buffer.NumberOfBytesToRead,
+        &ByteOffset,
+        NULL);
     if (Status == STATUS_PENDING)
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
     Log(Status, L"LxssMessagePortReceive");
@@ -87,18 +139,20 @@ void CreateProcessAsync(
             HANDLE_FLAG_INHERIT);
     }
 
-    if(!CreateWinProcess(LxReceiveMsg, &ProcResult))
-        Log(bRes, L"CreateWinProcess");
+    // Create Windows process from unmarshalled VFS handles
+    bRes = CreateWinProcess(LxReceiveMsg, &ProcResult);
+    if(!bRes)
+        Log(GetLastError(), L"CreateWinProcess");
 
-    //Make pipes for receving console resize message
-    HANDLE hReadPipe, hWritePipe;
-    Status = OpenAnonymousPipe(&hReadPipe, &hWritePipe);
+    // Create pipes to get console resize message
+    HANDLE ReadPipeHandle = NULL, WritePipeHandle = NULL;
+    Status = OpenAnonymousPipe(&ReadPipeHandle, &WritePipeHandle);
     Log(Status, L"OpenAnonymousPipe");
 
     // Marshal hWritePipe handle to get struct winsize from TIOCGWINSZ ioctl
-    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg;
-    HandleMsg.Handle = ToULong(hWritePipe);
-    HandleMsg.Type = LxOutputPipeType;
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMessage;
+    HandleMessage.Handle = ToULong(WritePipeHandle);
+    HandleMessage.Type = LxOutputPipeType;
 
     Status = NtDeviceIoControlFile(
         ClientHandle,
@@ -107,19 +161,56 @@ void CreateProcessAsync(
         NULL,
         &IoStatusBlock,
         IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_HANDLE,
-        &HandleMsg, sizeof(HandleMsg),
-        &HandleMsg, sizeof(HandleMsg));
+        &HandleMessage, sizeof(HandleMessage),
+        &HandleMessage, sizeof(HandleMessage));
 
-    ProcessInteropMessages(hReadPipe, &ProcResult);
+    // Send this buffer so that Lx side can unmarshal the pipe
+    LXSS_MESSAGE_PORT_SEND_OBJECT LxSendMsg = { 0 };
+    LxSendMsg.InteropMessage.CreateNtProcessFlag = INTEROP_LXBUS_READ_NT_PROCESS_STATUS;
+    LxSendMsg.InteropMessage.BufferSize = sizeof(LxSendMsg);
+    LxSendMsg.InteropMessage.LastError = ProcResult.LastError;
+    LxSendMsg.IsSubsystemGUI = ProcResult.IsSubsystemGUI;
+    LxSendMsg.HandleMessage = HandleMessage;
+
+    Status = NtWriteFile(
+        ClientHandle,
+        EventHandle,
+        NULL,
+        NULL,
+        &IoStatusBlock,
+        &LxSendMsg,
+        sizeof(LxSendMsg),
+        &ByteOffset,
+        NULL);
+    if (Status == STATUS_PENDING)
+        WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
+
+    // Send NT process ExitStatus from ProcessInteropMessages
+    LxSendMsg.InteropMessage.CreateNtProcessFlag = INTEROP_LXBUS_WRITE_NT_PROCESS_STATUS;
+    LxSendMsg.InteropMessage.BufferSize = sizeof(LxSendMsg.InteropMessage);
+    LxSendMsg.InteropMessage.LastError = ProcessInteropMessages(ReadPipeHandle, &ProcResult);
+
+    Status = NtWriteFile(
+        ClientHandle,
+        EventHandle,
+        NULL,
+        NULL,
+        &IoStatusBlock,
+        &LxSendMsg.InteropMessage,
+        sizeof(LxSendMsg.InteropMessage),
+        &ByteOffset,
+        NULL);
+    if (Status == STATUS_PENDING)
+        WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
 
     // Close pseudo console if command is without pipe
-    // ClosePseudoConsole(ProcResult.hpCon);
+    ClosePseudoConsole(ProcResult.hpCon);
 
     free(LxReceiveMsg);
     NtClose(EventHandle);
     NtClose(ProcResult.ProcInfo.hProcess);
     NtClose(ProcResult.ProcInfo.hThread);
-    NtClose(hReadPipe);
-    NtClose(hWritePipe);
+    NtClose(ReadPipeHandle);
+    NtClose(WritePipeHandle);
     NtClose(ClientHandle);
 }

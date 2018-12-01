@@ -36,7 +36,7 @@ typedef union _LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA {
         LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE Type;
     };
     unsigned long long HandleIdCount;
-} LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA;
+} LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA, *PLXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA;
 
 // LxCore!LxBuspIpcConnectionUnmarshalVfsFile
 #define IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE \
@@ -70,17 +70,29 @@ typedef struct _LXSS_MESSAGE_PORT_RECEIVE_OBJECT {
 #pragma pack (pop)
 
 // Interop Flags
-#define RESTORE_CONSOLE_STATE_MODE 1 // restored by tcsetattr TCSETS ioctl and STDIN_FILENO file
+#define INTEROP_RESTORE_CONSOLE_STATE_MODE 1u // tcsetattr(3) restores size with TCSETS ioctl
+#define INTEROP_LXBUS_WRITE_NT_PROCESS_STATUS 6u // write(2) NT process ExitStatus in LxBus client handle
+#define INTEROP_LX_SEND_CONSOLE_SIZE 7u // init sends this to LxBus client handle
+#define INTEROP_LXBUS_READ_NT_PROCESS_STATUS 8u // read(2) the handle message for ioctl TIOCGWINSZ request
 
 typedef struct _LXSS_MESSAGE_PORT_SEND_OBJECT {
-    unsigned int CreateNtProcessFlag;
-    unsigned int BufferSize;
-    unsigned int LastError;
+    struct {
+        unsigned int CreateNtProcessFlag;
+        unsigned int BufferSize;
+        unsigned int LastError;
+    } InteropMessage;
     unsigned int UnknownA;
-    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg;
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMessage;
     unsigned int IsSubsystemGUI;
     unsigned int UnknownB;
 } LXSS_MESSAGE_PORT_SEND_OBJECT, *PLXSS_MESSAGE_PORT_SEND_OBJECT;
+
+typedef struct _LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE {
+    unsigned int TerminalResizeFlag;
+    unsigned int BufferSize;
+    unsigned short WindowHeight;
+    unsigned short WindowWidth;
+} LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE, *PLXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE;
 
 // LxCore!LxpControlDeviceIoctlLxProcess
 #define IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL \
