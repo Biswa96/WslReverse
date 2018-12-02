@@ -99,6 +99,14 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     UNICODE_STRING RedirectionDllName;
 } X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
 
+// Danger zone black magic
+#ifdef _DEBUG
+X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void); // From UserProcessParameter.asm file
+#else
+#define UserProcessParameter() \
+    (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
+#endif
+
 typedef struct _ACTIVATION_CONTEXT_DATA {
     ULONG Magic;
     ULONG HeaderSize;
@@ -204,7 +212,7 @@ typedef struct _PEB64 {
     char Padding4[4];
     ULONG_PTR ActiveProcessAffinityMask;
     ULONG GdiHandleBuffer[60];
-    void(__stdcall *PostProcessInitRoutine)();
+    void(__stdcall *PostProcessInitRoutine)(void);
     PVOID TlsExpansionBitmap;
     ULONG TlsExpansionBitmapBits[32];
     ULONG SessionId;
@@ -281,16 +289,16 @@ typedef enum _FSINFOCLASS {
     FileFsMetadataSizeInformation,
     FileFsFullSizeInformationEx,
     FileFsMaximumInformation
-} FSINFOCLASS, *PFSINFOCLASS;
+} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
+
+#endif // _MSC_VER
 
 NTSTATUS NtQueryVolumeInformationFile(
     _In_ HANDLE FileHandle,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_ PVOID FsInformation,
     _In_ ULONG Length,
-    _In_ FSINFOCLASS FsInformationClass);
-
-#endif // _MSC_VER
+    _In_ FS_INFORMATION_CLASS FsInformationClass);
 
 NTSTATUS NtReadFile(
     _In_ HANDLE FileHandle,
@@ -334,5 +342,24 @@ NTSTATUS NtCreateNamedPipeFile(
     _In_ ULONG InBufferSize,
     _In_ ULONG OutBufferSize,
     _In_ PLARGE_INTEGER DefaultTimeOut);
+
+NTSTATUS NtReadVirtualMemory(
+    _In_ HANDLE ProcessHandle,
+    _In_opt_ PVOID BaseAddress,
+    _In_ PVOID Buffer,
+    _In_ SIZE_T BufferSize,
+    _Out_opt_ PSIZE_T NumberOfBytesRead);
+
+NTSTATUS TpAllocWork(
+    _Out_ PTP_WORK *WorkReturn,
+    _In_ PTP_WORK_CALLBACK Callback,
+    _Inout_opt_ PVOID Context,
+    _In_opt_ PTP_CALLBACK_ENVIRON CallbackEnviron);
+
+void TpPostWork(
+    _Inout_ PTP_WORK Work);
+
+void TpReleaseWork(
+    _Inout_ PTP_WORK Work);
 
 #endif // WININTERNAL_H

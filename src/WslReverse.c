@@ -3,11 +3,10 @@
 #include "wgetopt.h"
 #include <stdio.h>
 
-int main()
+int main(void)
 {
     int wargc;
-    wchar_t** wargv;
-    wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    wchar_t** wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
 
     if (wargc < 2)
     {
@@ -44,6 +43,7 @@ int main()
     result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (void**)&wslSession);
     Log(result, L"CoCreateInstance");
 
+    // Option parsing
     while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:lr:S:s:t:u:", OptionTable, 0)) != -1)
     {
         switch (c)

@@ -26,6 +26,9 @@
     <ClInclude Include="src\WinInternal.h" />
     <ClInclude Include="src\WslSession.h" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="src\UserProcessParameter.asm" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{85478E9D-DB08-4F02-8C70-EC570DA57304}</ProjectGuid>
@@ -41,6 +44,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -57,7 +61,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4201;4204;4214</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
@@ -65,5 +69,6 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

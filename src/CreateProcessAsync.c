@@ -29,7 +29,7 @@ ULONG ProcessInteropMessages(
     DWORD ExitCode;
     IO_STATUS_BLOCK Isb;
     LARGE_INTEGER ByteOffset = { 0 };
-    COORD ConsoleSize = { 0 };
+    
     LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg = { 0 };
 
     // Create an event to sync all reads and writes
@@ -39,9 +39,7 @@ ULONG ProcessInteropMessages(
         CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET,
         EVENT_ALL_ACCESS);
 
-    HANDLE Handles[2];
-    Handles[0] = EventHandle;
-    Handles[1] = ProcResult->ProcInfo.hProcess;
+    HANDLE Handles[2] = { EventHandle, ProcResult->ProcInfo.hProcess };
 
     // Read buffer from TIOCGWINSZ ioctl
     NTSTATUS Status = NtReadFile(
@@ -58,8 +56,9 @@ ULONG ProcessInteropMessages(
         WaitForMultipleObjects(ARRAY_SIZE(Handles), Handles, FALSE, INFINITE); // Temporary solution
 
     GetExitCodeProcess(ProcResult->ProcInfo.hProcess, &ExitCode);
-    ConsoleSize.X = LxTerminalMsg.WindowWidth;
-    ConsoleSize.Y = LxTerminalMsg.WindowHeight;
+
+    // Resize pseudo console when winsize.ws_row and winsize.ws_col received
+    COORD ConsoleSize = { LxTerminalMsg.WindowWidth, LxTerminalMsg.WindowHeight };
     ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
 
     NtClose(EventHandle);

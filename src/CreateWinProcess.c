@@ -92,9 +92,7 @@ BOOL CreateWinProcess(
 
     if (LxReceiveMsg->IsWithoutPipe)
     {
-        COORD ConsoleSize;
-        ConsoleSize.X = LxReceiveMsg->WindowWidth;
-        ConsoleSize.Y = LxReceiveMsg->WindowHeight;
+        COORD ConsoleSize = { LxReceiveMsg->WindowWidth, LxReceiveMsg->WindowHeight };
 
         HRESULT hRes = CreatePseudoConsole(
             ConsoleSize,
@@ -117,10 +115,10 @@ BOOL CreateWinProcess(
         SInfoEx.StartupInfo.hStdOutput = ToHandle(LxReceiveMsg->VfsHandle[1].Handle);
         SInfoEx.StartupInfo.hStdError = ToHandle(LxReceiveMsg->VfsHandle[2].Handle);
 
-        HANDLE Value[3] = { NULL };
-        Value[0] = ToHandle(LxReceiveMsg->VfsHandle[0].Handle);
-        Value[1] = ToHandle(LxReceiveMsg->VfsHandle[1].Handle);
-        Value[2] = ToHandle(LxReceiveMsg->VfsHandle[2].Handle);
+        HANDLE Value[3] = {
+            ToHandle(LxReceiveMsg->VfsHandle[0].Handle),
+            ToHandle(LxReceiveMsg->VfsHandle[1].Handle),
+            ToHandle(LxReceiveMsg->VfsHandle[2].Handle) };
 
         bRes = UpdateProcThreadAttribute(
             AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
@@ -166,12 +164,17 @@ BOOL CreateWinProcess(
 
     if (NT_SUCCESS(Status))
     {
-        ReadProcessMemory(
+        SIZE_T NumberOfBytesRead = 0;
+
+        Status = NtReadVirtualMemory(
             ProcResult->ProcInfo.hProcess,
             BasicInfo.PebBaseAddress,
             &Peb,
             sizeof(PEB64),
-            NULL);
+            &NumberOfBytesRead);
+
+        if (NT_SUCCESS(Status))
+            wprintf(L"[*] ReadProcessMemory NumberOfBytesRead: %zu\n", NumberOfBytesRead);
 
         // From IMAGE_OPTIONAL_HEADER structure
         if (Peb.ImageSubsystemMinorVersion == IMAGE_SUBSYSTEM_WINDOWS_GUI)

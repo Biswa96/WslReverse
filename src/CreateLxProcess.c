@@ -2,7 +2,7 @@
 #include "CreateProcessAsync.h"
 #include "Functions.h"
 #include "WslSession.h"
-#include "WinInternal.h" // some defined expression
+#include "WinInternal.h" // PEB and some defined expression
 #include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
 
@@ -19,7 +19,7 @@ void CreateProcessWorker(
 
     NTSTATUS Status;
     IO_STATUS_BLOCK Isb;
-    PTP_WORK pwk = NULL;
+    PTP_WORK WorkReturn = NULL;
     LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG ConnectionMsg = { 0 };
 
     // Infinite loop to wait for client message
@@ -45,17 +45,20 @@ void CreateProcessWorker(
             break;
 
         wprintf(
-            L"[*] CreateProcessWorker ClientHandle: %lu\n",
+            L"[*] CreateProcessWorker ClientHandle: %ld\n",
             ConnectionMsg.ClientHandle);
 
-        pwk = CreateThreadpoolWork(
+        Status = TpAllocWork(
+            &WorkReturn,
             (PTP_WORK_CALLBACK)CreateProcessAsync,
             ToHandle(ConnectionMsg.ClientHandle),
             NULL);
+        if (NT_SUCCESS(Status))
+            Log(Status, L"CreateProcessWorker TpAllocWork");
 
         ConnectionMsg.ClientHandle = 0;
-        SubmitThreadpoolWork(pwk);
-        CloseThreadpoolWork(pwk);
+        TpPostWork(WorkReturn);
+        TpReleaseWork(WorkReturn);
     }
 
     NtClose(ServerHandle);
@@ -69,21 +72,26 @@ BOOL InitializeInterop(
     UNREFERENCED_PARAMETER(LxInstanceID); // For future use in Hyper-V VM Mode
 
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
-    HANDLE ProcHandle, hServer, hProc = NtCurrentProcess();
+    HANDLE ProcHandle, ServerHandleDup, hProc = NtCurrentProcess();
 
     // Create an event to synchronize with wslhost.exe process
     HANDLE EventHandle = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
     BOOL bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = DuplicateHandle(hProc, hProc, hProc, &ProcHandle, 0, TRUE, DUPLICATE_SAME_ACCESS);
-    bRes = DuplicateHandle(hProc, ServerHandle, hProc, &hServer, 0, FALSE, DUPLICATE_SAME_ACCESS);
+    bRes = DuplicateHandle(hProc, ServerHandle, hProc, &ServerHandleDup, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
     // Connect to LxssMessagePort for Windows interopt
-    PTP_WORK pwk = CreateThreadpoolWork(
+    PTP_WORK WorkReturn = NULL;
+    NTSTATUS Status = TpAllocWork(
+        &WorkReturn,
         (PTP_WORK_CALLBACK)CreateProcessWorker,
-        hServer,
+        ServerHandleDup,
         NULL);
-    SubmitThreadpoolWork(pwk);
+
+    if (NT_SUCCESS(Status))
+        Log(Status, L"InitializeInterop TpAllocWork");
+    TpPostWork(WorkReturn);
 
     // Configure all the required handles for wslhost.exe process
     size_t AttrbSize;
@@ -91,10 +99,7 @@ BOOL InitializeInterop(
     LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = malloc(AttrbSize);
     bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
 
-    HANDLE Value[3] = { NULL };
-    Value[0] = ServerHandle;
-    Value[1] = EventHandle;
-    Value[2] = ProcHandle;
+    HANDLE Value[3] = { ServerHandle, EventHandle, ProcHandle };
     bRes = UpdateProcThreadAttribute(
         AttrbList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
         Value, sizeof(Value), NULL, NULL);
@@ -146,9 +151,7 @@ BOOL InitializeInterop(
 
     if (bRes)
     {
-        HANDLE Handles[2] = { NULL };
-        Handles[0] = ProcInfo.hProcess;
-        Handles[1] = EventHandle;
+        HANDLE Handles[2] = { ProcInfo.hProcess, EventHandle };
         WaitForMultipleObjectsEx(ARRAY_SIZE(Handles), Handles, FALSE, 0, FALSE);
     }
     else
@@ -166,18 +169,13 @@ BOOL InitializeInterop(
     return bRes;
 }
 
-// Cast the pre-defined structure with X_ prefixed one
-#define UserProcessParameter() \
-    (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
-
 HRESULT CreateLxProcess(
     PWslSession* WslSession,
     GUID* DistroID)
 {
     ULONG InputMode = 0, OutputMode = 0;
-    HANDLE ProcessHandle, ServerHandle;
+    HANDLE ProcessHandle = NULL, ServerHandle = NULL;
     GUID InitiatedDistroID, LxInstanceID;
-    COORD WindowSize;
     PVOID socket = NULL;
 
     // LxssManager sets Standard Handles automatically
@@ -198,8 +196,8 @@ HRESULT CreateLxProcess(
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Configure Console Handles
-    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    HANDLE hIn = ProcParam->StandardInput;
+    HANDLE hOut = ProcParam->StandardOutput;
 
     if (GetFileType(hIn) == FILE_TYPE_CHAR
         && GetConsoleMode(hIn, &InputMode))
@@ -226,6 +224,7 @@ HRESULT CreateLxProcess(
     }
 
     // Set console size from screen buffer co-ordinates
+    COORD WindowSize;
     CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer = { 0 };
     ConBuffer.cbSize = sizeof(ConBuffer);
     GetConsoleScreenBufferInfoEx(hOut, &ConBuffer);
@@ -293,8 +292,8 @@ HRESULT CreateLxProcess(
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg),
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg));
 
-            if(NT_SUCCESS(Status))
-            Log(WaitForSignalMsg.ExitStatus, L"WaitForSignalMsg");
+            if (NT_SUCCESS(Status))
+                Log(WaitForSignalMsg.ExitStatus, L"WaitForSignalMsg");
         }
     }
 
