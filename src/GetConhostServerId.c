@@ -17,7 +17,7 @@ unsigned long long GetConhostServerId(
     unsigned long long ConHostPid = 0;
     NTSTATUS Status;
 
-    Status = NtQueryVolumeInformationFile(
+    Status = ZwQueryVolumeInformationFile(
         ConsoleHandle,
         &IoStatusBlock,
         &FsInformation,
@@ -27,7 +27,7 @@ unsigned long long GetConhostServerId(
     // FsInformation.Characteristics == FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL
     if (FsInformation.DeviceType == FILE_DEVICE_CONSOLE)
     {
-        Status = NtDeviceIoControlFile(
+        Status = ZwDeviceIoControlFile(
             ConsoleHandle,
             NULL,
             NULL,

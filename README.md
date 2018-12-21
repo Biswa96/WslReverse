@@ -42,9 +42,9 @@ src\
     +-- CreateWinProcess: Create Windows process with LxBus server
     +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
         |
-        |   +-- Functions: Helping functions to beautify console output
+        |   +-- Functions: Helping functions to log functions return values
         |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
-        |   +-- WslSession: LxssSession COM interface
+        |   +-- WslSession: LxssUserSession COM interface
         |   |
         |   |
         +-- CreateLxProcess: Run WSL pico processes
@@ -70,8 +70,7 @@ This project uses some definitions and data types from followings. Thanks to:
 
 ## Contributing
 
-* For programmers: Need ideas to connect WSL with any other terminals like [mintty][5] without any ELF backend or any extra modules which creates extra processes. 
-* For non-programmers: Provide some beautiful names for the structures and constant values used in `CreateProcessAsync.c` file. 
+Need ideas to connect WSL with any other terminals like [mintty][5] without any ELF backend or any extra modules which creates extra processes. 
 
 ## License 
 

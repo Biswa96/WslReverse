@@ -12,11 +12,11 @@ NTSTATUS WaitForMessage(
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
-    Status = NtWaitForSingleObject(EventHandle, FALSE, &Timeout);
+    Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
-        NtCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
-        Status = NtWaitForSingleObject(EventHandle, FALSE, NULL);
+        ZwCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
+        Status = ZwWaitForSingleObject(EventHandle, FALSE, NULL);
     }
 
     return Status;
@@ -29,20 +29,21 @@ ULONG ProcessInteropMessages(
     DWORD ExitCode;
     IO_STATUS_BLOCK Isb;
     LARGE_INTEGER ByteOffset = { 0 };
-    
     LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg = { 0 };
 
     // Create an event to sync all reads and writes
-    HANDLE EventHandle = CreateEventExW(
+    HANDLE EventHandle = NULL;
+    NTSTATUS Status = ZwCreateEvent(
+        &EventHandle,
+        EVENT_ALL_ACCESS,
         NULL,
-        NULL,
-        CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET,
-        EVENT_ALL_ACCESS);
+        NotificationEvent,
+        TRUE);
 
     HANDLE Handles[2] = { EventHandle, ProcResult->ProcInfo.hProcess };
 
     // Read buffer from TIOCGWINSZ ioctl
-    NTSTATUS Status = NtReadFile(
+    Status = ZwReadFile(
         ReadPipeHandle,
         EventHandle,
         NULL,
@@ -53,15 +54,24 @@ ULONG ProcessInteropMessages(
         &ByteOffset,
         NULL);
     if (Status == STATUS_PENDING)
-        WaitForMultipleObjects(ARRAY_SIZE(Handles), Handles, FALSE, INFINITE); // Temporary solution
+    {
+        ZwWaitForMultipleObjects(
+            ARRAY_SIZE(Handles),
+            Handles,
+            WaitAny,
+            FALSE,
+            NULL); // Temporary solution
+    }
 
     GetExitCodeProcess(ProcResult->ProcInfo.hProcess, &ExitCode);
 
     // Resize pseudo console when winsize.ws_row and winsize.ws_col received
-    COORD ConsoleSize = { LxTerminalMsg.WindowWidth, LxTerminalMsg.WindowHeight };
+    COORD ConsoleSize; 
+    ConsoleSize.X = LxTerminalMsg.WindowWidth;
+    ConsoleSize.Y = LxTerminalMsg.WindowHeight;
     ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
 
-    NtClose(EventHandle);
+    ZwClose(EventHandle);
     return ExitCode;
 }
 
@@ -78,13 +88,18 @@ void CreateProcessAsync(
     LARGE_INTEGER ByteOffset = { 0 };
     LXSS_MESSAGE_PORT_RECEIVE_OBJECT Buffer;
     PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg = NULL;
-    LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
+    HANDLE EventHandle = NULL, HeapHandle = GetProcessHeap();
 
     // Create an event to sync all reads and writes
-    HANDLE EventHandle = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
+    NTSTATUS Status = ZwCreateEvent(
+        &EventHandle,
+        EVENT_ALL_ACCESS,
+        NULL,
+        SynchronizationEvent,
+        FALSE);
 
     // Receive messages from client handle
-    NTSTATUS Status = NtReadFile(
+    Status = ZwReadFile(
         ClientHandle,
         EventHandle,
         NULL,
@@ -95,8 +110,12 @@ void CreateProcessAsync(
         &ByteOffset,
         NULL);
 
-    LxReceiveMsg = malloc(Buffer.NumberOfBytesToRead);
-    Status = NtReadFile(
+    LxReceiveMsg = RtlAllocateHeap(
+        HeapHandle,
+        HEAP_ZERO_MEMORY,
+        Buffer.NumberOfBytesToRead);
+
+    Status = ZwReadFile(
         ClientHandle,
         EventHandle,
         NULL,
@@ -122,7 +141,7 @@ void CreateProcessAsync(
     for (int i = 0; i < TOTAL_IO_HANDLES; i++)
     {
         // IoCreateFile creates \Device\lxss\{Instance-GUID}\VfsFile
-        Status = NtDeviceIoControlFile(
+        Status = ZwDeviceIoControlFile(
             ClientHandle,
             NULL,
             NULL,
@@ -139,6 +158,7 @@ void CreateProcessAsync(
     }
 
     // Create Windows process from unmarshalled VFS handles
+    LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
     bRes = CreateWinProcess(LxReceiveMsg, &ProcResult);
     if(!bRes)
         Log(GetLastError(), L"CreateWinProcess");
@@ -153,7 +173,7 @@ void CreateProcessAsync(
     HandleMessage.Handle = ToULong(WritePipeHandle);
     HandleMessage.Type = LxOutputPipeType;
 
-    Status = NtDeviceIoControlFile(
+    Status = ZwDeviceIoControlFile(
         ClientHandle,
         NULL,
         NULL,
@@ -171,7 +191,7 @@ void CreateProcessAsync(
     LxSendMsg.IsSubsystemGUI = ProcResult.IsSubsystemGUI;
     LxSendMsg.HandleMessage = HandleMessage;
 
-    Status = NtWriteFile(
+    Status = ZwWriteFile(
         ClientHandle,
         EventHandle,
         NULL,
@@ -189,7 +209,7 @@ void CreateProcessAsync(
     LxSendMsg.InteropMessage.BufferSize = sizeof(LxSendMsg.InteropMessage);
     LxSendMsg.InteropMessage.LastError = ProcessInteropMessages(ReadPipeHandle, &ProcResult);
 
-    Status = NtWriteFile(
+    Status = ZwWriteFile(
         ClientHandle,
         EventHandle,
         NULL,
@@ -205,11 +225,11 @@ void CreateProcessAsync(
     // Close pseudo console if command is without pipe
     ClosePseudoConsole(ProcResult.hpCon);
 
-    free(LxReceiveMsg);
-    NtClose(EventHandle);
-    NtClose(ProcResult.ProcInfo.hProcess);
-    NtClose(ProcResult.ProcInfo.hThread);
-    NtClose(ReadPipeHandle);
-    NtClose(WritePipeHandle);
-    NtClose(ClientHandle);
+    RtlFreeHeap(HeapHandle, 0, LxReceiveMsg);
+    ZwClose(EventHandle);
+    ZwClose(ProcResult.ProcInfo.hProcess);
+    ZwClose(ProcResult.ProcInfo.hThread);
+    ZwClose(ReadPipeHandle);
+    ZwClose(WritePipeHandle);
+    ZwClose(ClientHandle);
 }

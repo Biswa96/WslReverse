@@ -1,12 +1,13 @@
+#include "WslSession.h"
 #include "Functions.h"
-#include "CreateLxProcess.h" // include WslSession.h
+#include "CreateLxProcess.h"
 #include "wgetopt.h"
 #include <stdio.h>
 
 int main(void)
 {
     int wargc;
-    wchar_t** wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    PWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
 
     if (wargc < 2)
     {
@@ -40,7 +41,7 @@ int main(void)
 
     CoInitializeEx(0, COINIT_MULTITHREADED);
     CoInitializeSecurity(0, -1, 0, 0, RPC_C_AUTHN_LEVEL_DEFAULT, SecurityDelegation, 0, EOAC_STATIC_CLOAKING, 0);
-    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (void**)&wslSession);
+    result = CoCreateInstance(&CLSID_LxssUserSession, 0, CLSCTX_LOCAL_SERVER, &IID_ILxssUserSession, (PVOID*)&wslSession);
     Log(result, L"CoCreateInstance");
 
     // Option parsing

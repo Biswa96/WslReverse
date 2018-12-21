@@ -31,13 +31,13 @@ void CreateProcessWorker(
             ToULong(ServerHandle));
 
         // IoCreateFile creates \Device\lxss\{Instance-GUID}\MessagePort
-        Status = NtDeviceIoControlFile(
+        Status = ZwDeviceIoControlFile(
             ServerHandle,
             NULL,
             NULL,
             NULL,
             &Isb,
-            IOCTL_ADSS_IPC_SERVER_WAIT_FOR_CONNECTION,
+            IOCTL_LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION,
             &ConnectionMsg, sizeof(ConnectionMsg),
             &ConnectionMsg, sizeof(ConnectionMsg));
 
@@ -61,7 +61,7 @@ void CreateProcessWorker(
         TpReleaseWork(WorkReturn);
     }
 
-    NtClose(ServerHandle);
+    ZwClose(ServerHandle);
 }
 
 BOOL InitializeInterop(
@@ -71,19 +71,41 @@ BOOL InitializeInterop(
 {
     UNREFERENCED_PARAMETER(LxInstanceID); // For future use in Hyper-V VM Mode
 
+    BOOL bRes;
+    NTSTATUS Status;
     wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
-    HANDLE ProcHandle, ServerHandleDup, hProc = NtCurrentProcess();
+    HANDLE EventHandle, ProcHandle, ServerHandleDup, HeapHandle = GetProcessHeap();
 
     // Create an event to synchronize with wslhost.exe process
-    HANDLE EventHandle = CreateEventExW(NULL, NULL, 0, EVENT_ALL_ACCESS);
-    BOOL bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    Status = ZwCreateEvent(
+        &EventHandle,
+        EVENT_ALL_ACCESS,
+        NULL,
+        SynchronizationEvent,
+        FALSE);
+
+    bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-    bRes = DuplicateHandle(hProc, hProc, hProc, &ProcHandle, 0, TRUE, DUPLICATE_SAME_ACCESS);
-    bRes = DuplicateHandle(hProc, ServerHandle, hProc, &ServerHandleDup, 0, FALSE, DUPLICATE_SAME_ACCESS);
+    Status = ZwDuplicateObject(
+        ZwCurrentProcess(),
+        ZwCurrentProcess(),
+        ZwCurrentProcess(),
+        &ProcHandle,
+        0,
+        OBJ_INHERIT,
+        DUPLICATE_SAME_ACCESS);
+    Status = ZwDuplicateObject(
+        ZwCurrentProcess(),
+        ServerHandle,
+        ZwCurrentProcess(),
+        &ServerHandleDup,
+        0,
+        0,
+        DUPLICATE_SAME_ACCESS);
 
     // Connect to LxssMessagePort for Windows interopt
     PTP_WORK WorkReturn = NULL;
-    NTSTATUS Status = TpAllocWork(
+    Status = TpAllocWork(
         &WorkReturn,
         (PTP_WORK_CALLBACK)CreateProcessWorker,
         ServerHandleDup,
@@ -96,7 +118,10 @@ BOOL InitializeInterop(
     // Configure all the required handles for wslhost.exe process
     size_t AttrbSize;
     InitializeProcThreadAttributeList(NULL, 1, 0, &AttrbSize);
-    LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = malloc(AttrbSize);
+    LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = RtlAllocateHeap(
+        HeapHandle,
+        HEAP_ZERO_MEMORY,
+        AttrbSize);
     bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
 
     HANDLE Value[3] = { ServerHandle, EventHandle, ProcHandle };
@@ -152,7 +177,12 @@ BOOL InitializeInterop(
     if (bRes)
     {
         HANDLE Handles[2] = { ProcInfo.hProcess, EventHandle };
-        WaitForMultipleObjectsEx(ARRAY_SIZE(Handles), Handles, FALSE, 0, FALSE);
+        Status = ZwWaitForMultipleObjects(
+            ARRAY_SIZE(Handles),
+            Handles,
+            WaitAny,
+            FALSE,
+            NULL);
     }
     else
     {
@@ -160,12 +190,12 @@ BOOL InitializeInterop(
     }
 
     // Cleanup
-    free(AttrbList);
-    NtClose(EventHandle);
+    RtlFreeHeap(HeapHandle, 0, AttrbList);
+    ZwClose(EventHandle);
     // NtClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
-    NtClose(ProcHandle);
-    NtClose(ProcInfo.hProcess);
-    NtClose(ProcInfo.hThread);
+    ZwClose(ProcHandle);
+    ZwClose(ProcInfo.hProcess);
+    ZwClose(ProcInfo.hThread);
     return bRes;
 }
 
@@ -177,6 +207,7 @@ HRESULT CreateLxProcess(
     HANDLE ProcessHandle = NULL, ServerHandle = NULL;
     GUID InitiatedDistroID, LxInstanceID;
     PVOID socket = NULL;
+    HANDLE HeapHandle = GetProcessHeap();
 
     // LxssManager sets Standard Handles automatically
     LXSS_STD_HANDLES StdHandles = { 0 };
@@ -190,9 +221,12 @@ HRESULT CreateLxProcess(
         ToULong(ConsoleHandle));
 
     // Preapare environments and argument
-    char* Arguments[] = { "-bash" };
+    PSTR Arguments[] = { "-bash" };
     ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
-    wchar_t* PathVariable = malloc(nSize * sizeof(wchar_t));
+    PWSTR PathVariable = RtlAllocateHeap(
+        HeapHandle,
+        HEAP_ZERO_MEMORY, 
+        nSize * sizeof(wchar_t));
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Configure Console Handles
@@ -282,13 +316,13 @@ HRESULT CreateLxProcess(
             InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
 
             // Use the IOCTL to wait on the process to terminate
-            NTSTATUS Status = NtDeviceIoControlFile(
+            NTSTATUS Status = ZwDeviceIoControlFile(
                 ProcessHandle,
                 NULL,
                 NULL,
                 NULL,
                 &Isb,
-                IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
+                IOCTL_LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg),
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg));
 
@@ -302,9 +336,9 @@ HRESULT CreateLxProcess(
     SetConsoleMode(hOut, OutputMode);
 
     // Cleanup
-    free(PathVariable);
-    NtClose(ProcessHandle);
-    NtClose(ServerHandle);
+    RtlFreeHeap(HeapHandle, 0, PathVariable);
+    ZwClose(ProcessHandle);
+    ZwClose(ServerHandle);
 
     return hRes;
 }

@@ -1,7 +1,9 @@
 #ifndef CREATELXPROCESS_H
 #define CREATELXPROCESS_H
 
-#include "WslSession.h"
+typedef long HRESULT;
+typedef struct _GUID GUID;
+typedef struct _WslSession WslSession, *PWslSession;
 
 HRESULT CreateLxProcess(
     PWslSession* WslSession,

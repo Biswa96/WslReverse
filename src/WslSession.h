@@ -49,10 +49,18 @@ typedef struct _LXSS_STD_HANDLES {
 
 typedef struct _WslSession WslSession, *PWslSession;
 
-struct _WslSession {
-    PVOID QueryInterface;
-    PVOID AddRef;
-    PVOID Release;
+struct _WslSession
+{
+    HRESULT(STDMETHODCALLTYPE *QueryInterface)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* riid,
+        _Out_ PVOID *ppv);
+
+    ULONG(STDMETHODCALLTYPE *AddRef)(
+        _In_ PWslSession* This);
+
+    ULONG(STDMETHODCALLTYPE *Release)(
+        _In_ PWslSession* This);
 
     /**
     * PVOID ObjectStublessClient3;
@@ -62,13 +70,12 @@ struct _WslSession {
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
         _In_ PWslSession* wslSession,
         _In_opt_ GUID* DistroId,
-        _In_opt_ ULONG InstanceMode
-        );
+        _In_opt_ ULONG InstanceMode);
 
     /**
     * PVOID ObjectStublessClient4;
+    * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -x -p --xattrs --no-acls -f -"
     * Write State to THREE means installing
-    * Run as administrator otherwise E_ACCESSDENIED error
     * State Must be TWO for newer installation
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterDistributionV1)(
@@ -77,8 +84,7 @@ struct _WslSession {
         _In_ ULONG State,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient5;
@@ -90,8 +96,7 @@ struct _WslSession {
         _In_ ULONG State,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient6;
@@ -102,8 +107,7 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistroName,
         _In_ ULONG State,
-        _Out_ GUID* DistroId
-        );
+        _Out_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient7;
@@ -112,8 +116,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *TerminateDistribution)(
         _In_ PWslSession* wslSession,
-        _In_opt_ GUID* DistroId
-        );
+        _In_opt_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient8;
@@ -122,8 +125,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *UnregisterDistribution)(
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient9;
@@ -137,8 +139,7 @@ struct _WslSession {
         _In_opt_ ULONG DefaultUid,
         _In_opt_ ULONG EnvironmentCount,
         _In_opt_ PCSTR* DefaultEnvironment,
-        _In_ ULONG Flags
-        );
+        _In_ ULONG Flags);
 
     /**
     * PVOID ObjectStublessClient10;
@@ -155,8 +156,7 @@ struct _WslSession {
         _Out_ PULONG DefaultUid,
         _Out_ PULONG EnvironmentCount,
         _Out_ PSTR** DefaultEnvironment,
-        _Out_ PULONG Flags
-        );
+        _Out_ PULONG Flags);
 
     /**
     * PVOID ObjectStublessClient11;
@@ -165,8 +165,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *GetDefaultDistribution)(
         _In_ PWslSession* wslSession,
-        _Out_ GUID* DistroId
-        );
+        _Out_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient12;
@@ -175,8 +174,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *SetDefaultDistribution)(
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient13;
@@ -187,8 +185,7 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ BOOLEAN WithThrow,
         _Out_ PULONG DistroCount,
-        _Out_ GUID** DistroIdList
-        );
+        _Out_ GUID** DistroIdList);
 
     /**
     * PVOID ObjectStublessClient14;
@@ -216,8 +213,7 @@ struct _WslSession {
         _In_ PVOID VmModeSocketA,
         _In_ PVOID VmModeSocketB,
         _In_ PVOID VmModeSocketC,
-        _In_ PVOID VmModeSocketD
-        );
+        _In_ PVOID VmModeSocketD);
 
     /**
     * PVOID ObjectStublessClient15;
@@ -228,8 +224,7 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ GUID* DistroId,
         _Out_ PULONG Version,
-        _Out_ PWSTR* BasePath
-        );
+        _Out_ PWSTR* BasePath);
 
     /**
     * PVOID ObjectStublessClient16;
@@ -239,8 +234,7 @@ struct _WslSession {
     HRESULT(STDMETHODCALLTYPE *FinishUpgradeDistribution)(
         _In_ PWslSession* wslSession,
         _In_ GUID* DistroId,
-        _In_ ULONG Version
-        );
+        _In_ ULONG Version);
 
     /**
     * PVOID ObjectStublessClient17;
@@ -248,8 +242,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *DisableVmMode)(
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient18;
@@ -257,8 +250,7 @@ struct _WslSession {
     **/
     HRESULT(STDMETHODCALLTYPE *EnableVmMode)(
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId
-        );
+        _In_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient19;
@@ -268,8 +260,7 @@ struct _WslSession {
         _In_ PWslSession* wslSession,
         _In_ GUID* DistroId,
         _In_ PSTR LxBusServerName,
-        _Out_ PHANDLE ServerHandle
-        );
+        _Out_ PHANDLE ServerHandle);
 
 };
 

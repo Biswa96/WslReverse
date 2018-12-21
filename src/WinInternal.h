@@ -100,7 +100,7 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
 } X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
 
 // Danger zone black magic
-#ifdef _DEBUG
+#ifdef _MSC_VER
 X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void); // From UserProcessParameter.asm file
 #else
 #define UserProcessParameter() \
@@ -293,14 +293,29 @@ typedef enum _FSINFOCLASS {
 
 #endif // _MSC_VER
 
-NTSTATUS NtQueryVolumeInformationFile(
+NTSTATUS ZwQueryInformationProcess(
+    _In_ HANDLE ProcessHandle,
+    _In_ PROCESSINFOCLASS ProcessInformationClass,
+    _In_ PVOID ProcessInformation,
+    _In_ ULONG ProcessInformationLength,
+    _Out_opt_ PULONG ReturnLength);
+
+NTSTATUS ZwQueryVolumeInformationFile(
     _In_ HANDLE FileHandle,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_ PVOID FsInformation,
     _In_ ULONG Length,
     _In_ FS_INFORMATION_CLASS FsInformationClass);
 
-NTSTATUS NtReadFile(
+NTSTATUS ZwOpenFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG OpenOptions);
+
+NTSTATUS ZwReadFile(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
     _In_opt_ PIO_APC_ROUTINE ApcRoutine,
@@ -311,7 +326,7 @@ NTSTATUS NtReadFile(
     _In_opt_ PLARGE_INTEGER ByteOffset,
     _In_opt_ PULONG Key);
 
-NTSTATUS NtWriteFile(
+NTSTATUS ZwWriteFile(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
     _In_opt_ PIO_APC_ROUTINE ApcRoutine,
@@ -322,12 +337,39 @@ NTSTATUS NtWriteFile(
     _In_opt_ PLARGE_INTEGER ByteOffset,
     _In_opt_ PULONG Key);
 
-NTSTATUS NtCancelIoFileEx(
+NTSTATUS ZwClose(
+    _In_ HANDLE Handle);
+
+NTSTATUS ZwCancelIoFileEx(
     _In_ HANDLE FileHandle,
     _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock);
 
-NTSTATUS NtCreateNamedPipeFile(
+NTSTATUS ZwDeviceIoControlFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG IoControlCode,
+    _In_opt_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_opt_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength);
+
+typedef enum _EVENT_TYPE {
+    NotificationEvent,
+    SynchronizationEvent
+} EVENT_TYPE;
+
+NTSTATUS ZwCreateEvent(
+    _Out_ PHANDLE EventHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _In_ EVENT_TYPE EventType,
+    _In_ BOOLEAN InitialState);
+
+NTSTATUS ZwCreateNamedPipeFile(
     _Out_ PHANDLE NamedPipeFileHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
@@ -343,12 +385,39 @@ NTSTATUS NtCreateNamedPipeFile(
     _In_ ULONG OutBufferSize,
     _In_ PLARGE_INTEGER DefaultTimeOut);
 
-NTSTATUS NtReadVirtualMemory(
+NTSTATUS ZwDuplicateObject(
+    _In_ HANDLE SourceProcessHandle,
+    _In_ HANDLE SourceHandle,
+    _In_opt_ HANDLE TargetProcessHandle,
+    _Out_opt_ PHANDLE TargetHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ ULONG HandleAttributes,
+    _In_ ULONG Options);
+
+NTSTATUS ZwReadVirtualMemory(
     _In_ HANDLE ProcessHandle,
     _In_opt_ PVOID BaseAddress,
     _In_ PVOID Buffer,
     _In_ SIZE_T BufferSize,
     _Out_opt_ PSIZE_T NumberOfBytesRead);
+
+typedef enum _WAIT_TYPE {
+    WaitAll,
+    WaitAny,
+    WaitNotification
+} WAIT_TYPE;
+
+NTSTATUS ZwWaitForSingleObject(
+    _In_ HANDLE Handle,
+    _In_ BOOLEAN Alertable,
+    _In_opt_ PLARGE_INTEGER Timeout);
+
+NTSTATUS ZwWaitForMultipleObjects(
+    _In_ ULONG Count, 
+    _In_ HANDLE Handles[],
+    _In_ WAIT_TYPE WaitType,
+    _In_ BOOLEAN Alertable,
+    _In_ PLARGE_INTEGER Timeout);
 
 NTSTATUS TpAllocWork(
     _Out_ PTP_WORK *WorkReturn,
@@ -361,5 +430,15 @@ void TpPostWork(
 
 void TpReleaseWork(
     _Inout_ PTP_WORK Work);
+
+PVOID RtlAllocateHeap(
+    _In_ PVOID HeapHandle,
+    _In_opt_ ULONG Flags,
+    _In_ SIZE_T Size);
+
+BOOLEAN RtlFreeHeap(
+    _In_ PVOID HeapHandle,
+    _In_opt_ ULONG Flags,
+    _Frees_ptr_opt_ PVOID BaseAddress);
 
 #endif // WININTERNAL_H

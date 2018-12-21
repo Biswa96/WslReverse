@@ -1,4 +1,4 @@
-#include "CreateWinProcess.h" // include WinInternal.h
+#include "CreateWinProcess.h" // include WinInternal.h and LxBus.h
 #include "Functions.h"
 
 #ifndef PSEUDOCONSOLE_INHERIT_CURSOR
@@ -38,7 +38,7 @@ NTSTATUS OpenAnonymousPipe(
     ObjectAttributes.RootDirectory = hPipeServer;
     ObjectAttributes.Length = sizeof(ObjectAttributes);
 
-    NTSTATUS Status = NtCreateNamedPipeFile(
+    NTSTATUS Status = ZwCreateNamedPipeFile(
         &hNamedPipeFile,
         GENERIC_READ | SYNCHRONIZE | FILE_WRITE_ATTRIBUTES,
         &ObjectAttributes,
@@ -59,7 +59,7 @@ NTSTATUS OpenAnonymousPipe(
     ObjectAttributes.RootDirectory = hNamedPipeFile;
     ObjectAttributes.ObjectName = &PipeObj;
 
-    Status = NtOpenFile(
+    Status = ZwOpenFile(
         &hFile,
         GENERIC_WRITE | SYNCHRONIZE | FILE_READ_ATTRIBUTES,
         &ObjectAttributes,
@@ -71,7 +71,7 @@ NTSTATUS OpenAnonymousPipe(
     // return handles to caller
     *ReadPipeHandle = hNamedPipeFile;
     *WritePipeHandle = hFile;
-    NtClose(hPipeServer);
+    ZwClose(hPipeServer);
     return Status;
 }
 
@@ -79,16 +79,18 @@ BOOL CreateWinProcess(
     PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
-    BOOL bRes;
     HPCON hpCon = NULL;
     SIZE_T AttrSize;
     STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
     PROCESS_BASIC_INFORMATION BasicInfo;
-    PEB64 Peb;
+    HANDLE HeapHandle = GetProcessHeap();
 
-    InitializeProcThreadAttributeList(NULL, 1, 0, &AttrSize);
-    LPPROC_THREAD_ATTRIBUTE_LIST AttrList = malloc(AttrSize);
-    InitializeProcThreadAttributeList(AttrList, 1, 0, &AttrSize);
+    BOOL bRes = InitializeProcThreadAttributeList(NULL, 1, 0, &AttrSize);
+    LPPROC_THREAD_ATTRIBUTE_LIST AttrList = RtlAllocateHeap(
+        HeapHandle,
+        HEAP_ZERO_MEMORY,
+        AttrSize);
+    bRes = InitializeProcThreadAttributeList(AttrList, 1, 0, &AttrSize);
 
     if (LxReceiveMsg->IsWithoutPipe)
     {
@@ -155,7 +157,7 @@ BOOL CreateWinProcess(
         ToULong(ProcResult->ProcInfo.hThread),
         ProcResult->ProcInfo.dwProcessId);
 
-    NTSTATUS Status = NtQueryInformationProcess(
+    NTSTATUS Status = ZwQueryInformationProcess(
         ProcResult->ProcInfo.hProcess,
         ProcessBasicInformation,
         &BasicInfo,
@@ -164,9 +166,10 @@ BOOL CreateWinProcess(
 
     if (NT_SUCCESS(Status))
     {
+        PEB64 Peb;
         SIZE_T NumberOfBytesRead = 0;
 
-        Status = NtReadVirtualMemory(
+        Status = ZwReadVirtualMemory(
             ProcResult->ProcInfo.hProcess,
             BasicInfo.PebBaseAddress,
             &Peb,
@@ -184,6 +187,6 @@ BOOL CreateWinProcess(
     // Set lasterror always success intentionally
     ProcResult->LastError = ERROR_SUCCESS;
 
-    free(AttrList);
+    RtlFreeHeap(HeapHandle, 0, AttrList);
     return bRes;
 }
