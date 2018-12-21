@@ -1,4 +1,5 @@
-#include "CreateWinProcess.h" // include WinInternal.h and LxBus.h
+#include "CreateWinProcess.h" // include WinInternal.h
+#include "LxBus.h"
 #include "Functions.h"
 
 #ifndef PSEUDOCONSOLE_INHERIT_CURSOR

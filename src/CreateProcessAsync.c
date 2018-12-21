@@ -1,5 +1,6 @@
-#include "CreateWinProcess.h" // include WinInternal.h and LxBus.h
+#include "CreateWinProcess.h" // include WinInternal.h
 #include "Functions.h"
+#include "LxBus.h"
 #include <stdio.h>
 
 NTSTATUS WaitForMessage(

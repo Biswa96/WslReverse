@@ -26,6 +26,7 @@ int main(void)
     // Option table
     const struct option OptionTable[] = {
         { L"get-id",        required_argument,   0,  'd' },
+        { L"export",        required_argument,   0,  'e' },
         { L"get-default",   no_argument,         0,  'G' },
         { L"get-config",    required_argument,   0,  'g' },
         { L"help",          no_argument,         0,  'h' },
@@ -45,7 +46,7 @@ int main(void)
     Log(result, L"CoCreateInstance");
 
     // Option parsing
-    while ((c = wgetopt_long(wargc, wargv, L"d:Gg:hi:lr:S:s:t:u:", OptionTable, 0)) != -1)
+    while ((c = wgetopt_long(wargc, wargv, L"d:e:Gg:hi:lr:S:s:t:u:", OptionTable, 0)) != -1)
     {
         switch (c)
         {
@@ -61,6 +62,38 @@ int main(void)
             PrintGuid(&DefaultDistroId, GuidString);
             Log(result, L"GetDistributionId");
             wprintf(L"%ls: %ls\n", optarg, GuidString);
+            break;
+        }
+        case 'e':
+        {
+            wchar_t TarFilePath[MAX_PATH];
+            wprintf(L"Enter filename or full path of exported tar file (without quote): ");
+            wscanf_s(L"%ls", TarFilePath, MAX_PATH);
+
+            HANDLE hTarFile = CreateFileW(
+                TarFilePath,
+                GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_DELETE,
+                NULL,
+                CREATE_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                NULL);
+
+            result = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+
+            if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
+            {
+                // hTarFile = GetStdHandle(STD_OUTPUT_HANDLE)
+                result = (*wslSession)->ExportDistributionFromPipe(wslSession, &DistroId, hTarFile);
+                Log(result, L"ExportDistributionFromPipe");
+            }
+            else
+            {
+                result = (*wslSession)->ExportDistribution(wslSession, &DistroId, hTarFile);
+                Log(result, L"ExportDistribution");
+            }
+
+            CloseHandle(hTarFile);
             break;
         }
         case 'G':
@@ -109,15 +142,32 @@ int main(void)
             CoCreateGuid(&DistroId);
 
             HANDLE hTarFile = CreateFileW(
-                TarFilePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
-                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                TarFilePath,
+                GENERIC_READ,
+                FILE_SHARE_READ | FILE_SHARE_DELETE,
+                NULL,
+                OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL,
+                NULL);
 
-            result = (*wslSession)->RegisterDistributionV1(
-                wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
+            if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
+            {
+                // hTarFile = GetStdHandle(STD_INPUT_HANDLE)
+                result = (*wslSession)->RegisterDistributionFromPipe(
+                    wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
+                Log(result, L"RegisterDistributionFromPipe");
+            }
+            else
+            {
+                result = (*wslSession)->RegisterDistribution(
+                    wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
+                Log(result, L"RegisterDistribution");
+            }
+
+            CloseHandle(hTarFile);
 
             if(result == S_OK)
                 wprintf(L"Installed\n");
-            Log(result, L"RegisterDistribution");
             break;
         }
         case 'l':

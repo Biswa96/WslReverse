@@ -44,6 +44,7 @@ void Usage(
         L"Usage: WslReverse.exe [-] [option] [argument]\n\n"
         L"Options:\n"
         L"  -d, --get-id       [distribution name]      Get distribution ID.\n"
+        L"  -e, --export       [distribution name]      Exports the distribution to a tar file.\n"
         L"  -G, --get-default                           Get default distribution ID.\n"
         L"  -g, --get-config   [distribution name]      Get distribution configuration.\n"
         L"  -h, --help                                  Show list of options.\n"

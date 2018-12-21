@@ -78,7 +78,7 @@ struct _WslSession
     * Write State to THREE means installing
     * State Must be TWO for newer installation
     **/
-    HRESULT(STDMETHODCALLTYPE *RegisterDistributionV1)(
+    HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
@@ -90,7 +90,7 @@ struct _WslSession
     * PVOID ObjectStublessClient5;
     * RPC_S_CANNOT_SUPPORT The requested operation is not supported.
     **/
-    HRESULT(STDMETHODCALLTYPE *RegisterDistributionV2)(
+    HRESULT(STDMETHODCALLTYPE *RegisterDistributionFromPipe)(
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
@@ -261,6 +261,24 @@ struct _WslSession
         _In_ GUID* DistroId,
         _In_ PSTR LxBusServerName,
         _Out_ PHANDLE ServerHandle);
+
+    /**
+    * PVOID ObjectStublessClient20;
+    * Command; "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
+    **/
+    HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* DistroId,
+        _In_ HANDLE FileHandle);
+
+    /**
+    * PVOID ObjectStublessClient21;
+    * The filename from standard output.
+    **/
+    HRESULT(STDMETHODCALLTYPE *ExportDistributionFromPipe)(
+        _In_ PWslSession* wslSession,
+        _In_ GUID* DistroId,
+        _In_ HANDLE FileHandle);
 
 };
 
