@@ -21,11 +21,11 @@ typedef enum _WslDefaultUID {
 } WslDefaultUID;
 
 typedef enum _LxssDistributionState {
-    Installed = 1,
-    ToBeInstall = 2,
-    Installing = 3,
-    Uninstalling = 4,
-    Upgrading = 5
+    Installed = 1,          // LxssUserSession::_SetDistributionInstalled
+    ToBeInstall = 2,        // LxssUserSession::_RegisterDistributionCommon
+    Installing = 3,         // LxssUserSession::_CreateDistributionRegistration
+    Uninstalling = 4,       // LxssUserSession::UnregisterDistribution
+    Upgrading = 5           // LxssUserSession::BeginUpgradeDistribution
 } LxssDistributionState;
 
 typedef enum _WSL_DISTRIBUTION_FLAGS {
@@ -33,7 +33,8 @@ typedef enum _WSL_DISTRIBUTION_FLAGS {
     WSL_DISTRIBUTION_FLAGS_ENABLE_INTEROP = 1,
     WSL_DISTRIBUTION_FLAGS_APPEND_NT_PATH = 2,
     WSL_DISTRIBUTION_FLAGS_ENABLE_DRIVE_MOUNTING = 4,
-    WSL_DISTRIBUTION_FLAGS_DEFAULT = 7
+    WSL_DISTRIBUTION_FLAGS_DEFAULT = 7,
+    WSL_DISTRIBUTION_FLAGS_VM_MODE = 8
 } WSL_DISTRIBUTION_FLAGS;
 
 typedef struct _LXSS_STD_HANDLE {
@@ -65,7 +66,7 @@ struct _WslSession
     /**
     * PVOID ObjectStublessClient3;
     * Create new LxssInstance or get the running one
-    * If no DistroId is provided get the default one
+    * If no DistroId is provided get the default distribuiton GUID
     **/
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
         _In_ PWslSession* wslSession,
@@ -202,8 +203,8 @@ struct _WslSession
         _In_opt_ PWSTR ProcessEnvironment,
         _In_opt_ SIZE_T EnvironmentLength,
         _In_opt_ PWSTR LinuxUserName,
-        _In_ USHORT WindowWidthX,
-        _In_ USHORT WindowHeightY,
+        _In_opt_ USHORT WindowWidthX,
+        _In_opt_ USHORT WindowHeightY,
         _In_ ULONG ConsoleHandle,
         _In_ PLXSS_STD_HANDLES StdHandles,
         _Out_ GUID* InitiatedDistroId,

@@ -264,6 +264,13 @@ typedef struct _PEB64 {
         };
     };
     ULONG NtGlobalFlag2;
+    union {
+        ULONG Win32Flags;
+        struct {
+            ULONG IsPosixDeleteDisabled : 1;
+            ULONG ReservedWin32Flags : 31;
+        };
+    };
 } PEB64, *PPEB64;
 
 #ifdef _MSC_VER
@@ -417,7 +424,7 @@ NTSTATUS ZwWaitForMultipleObjects(
     _In_ HANDLE Handles[],
     _In_ WAIT_TYPE WaitType,
     _In_ BOOLEAN Alertable,
-    _In_ PLARGE_INTEGER Timeout);
+    _In_opt_ PLARGE_INTEGER Timeout);
 
 NTSTATUS TpAllocWork(
     _Out_ PTP_WORK *WorkReturn,
@@ -439,6 +446,6 @@ PVOID RtlAllocateHeap(
 BOOLEAN RtlFreeHeap(
     _In_ PVOID HeapHandle,
     _In_opt_ ULONG Flags,
-    _Frees_ptr_opt_ PVOID BaseAddress);
+    _In_opt_ PVOID BaseAddress);
 
 #endif // WININTERNAL_H

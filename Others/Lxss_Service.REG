@@ -1,8 +1,8 @@
 Windows Registry Editor Version 5.00
 
-;NTSTATUS LxpInstanceLoadSettingsFromRegistry()
-;RTL_QUERY_REGISTRY_TABLE QueryTable[11]
-;RtlQueryRegistryValuesEx(RTL_REGISTRY_SERVICES, L"lxss", QueryTable, NULL, NULL);
+; NTSTATUS LxpInstanceLoadSettingsFromRegistry()
+; RTL_QUERY_REGISTRY_TABLE QueryTable[11]
+; RtlQueryRegistryValuesEx(RTL_REGISTRY_SERVICES, L"lxss", QueryTable, NULL, NULL);
 
 [HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\lxss]
 "PrintSysLevel"=dword:5
@@ -17,6 +17,9 @@ Windows Registry Editor Version 5.00
 "OvFsUnstableInode"=dword:1
 "DrvFsAllowForceCaseSensitivity"=dword:1
 
+; Security::GetUserBasicIntegrityLevel
+; GetTokenInformation(TokenHandle, TokenUIAccess, NULL, 0, &TokenInformationLength)
+
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager]
 "DisableMixedIntegrityLaunch"=dword:0
 "DistributionFlags"=dword:7
@@ -24,5 +27,3 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Lxss]
 "EnableVpnDetection"=dword:1
-
-;END#

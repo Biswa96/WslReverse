@@ -8,12 +8,11 @@ NTSTATUS WaitForMessage(
     HANDLE EventHandle,
     PIO_STATUS_BLOCK IoStatusBlock)
 {
-    NTSTATUS Status;
-    IO_STATUS_BLOCK IoRequestToCancel;
+    IO_STATUS_BLOCK IoRequestToCancel = { 0 };
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
-    Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
+    NTSTATUS Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
         ZwCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
@@ -41,8 +40,6 @@ ULONG ProcessInteropMessages(
         NotificationEvent,
         TRUE);
 
-    HANDLE Handles[2] = { EventHandle, ProcResult->ProcInfo.hProcess };
-
     // Read buffer from TIOCGWINSZ ioctl
     Status = ZwReadFile(
         ReadPipeHandle,
@@ -56,6 +53,8 @@ ULONG ProcessInteropMessages(
         NULL);
     if (Status == STATUS_PENDING)
     {
+        HANDLE Handles[2] = { EventHandle, ProcResult->ProcInfo.hProcess };
+
         ZwWaitForMultipleObjects(
             ARRAY_SIZE(Handles),
             Handles,
@@ -170,7 +169,7 @@ void CreateProcessAsync(
     Log(Status, L"OpenAnonymousPipe");
 
     // Marshal hWritePipe handle to get struct winsize from TIOCGWINSZ ioctl
-    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMessage;
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMessage = { 0 };
     HandleMessage.Handle = ToULong(WritePipeHandle);
     HandleMessage.Type = LxOutputPipeType;
 
@@ -224,12 +223,16 @@ void CreateProcessAsync(
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
 
     // Close pseudo console if command is without pipe
-    ClosePseudoConsole(ProcResult.hpCon);
+    if(ProcResult.hpCon)
+        ClosePseudoConsole(ProcResult.hpCon);
 
+    // Cleanup
     RtlFreeHeap(HeapHandle, 0, LxReceiveMsg);
     ZwClose(EventHandle);
-    ZwClose(ProcResult.ProcInfo.hProcess);
-    ZwClose(ProcResult.ProcInfo.hThread);
+    if(ProcResult.ProcInfo.hProcess)
+        ZwClose(ProcResult.ProcInfo.hProcess);
+    if(ProcResult.ProcInfo.hThread)
+        ZwClose(ProcResult.ProcInfo.hThread);
     ZwClose(ReadPipeHandle);
     ZwClose(WritePipeHandle);
     ZwClose(ClientHandle);

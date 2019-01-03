@@ -1,5 +1,4 @@
 #include "WinInternal.h"
-#include <stdio.h>
 
 #ifndef FILE_DEVICE_CONSOLE
 #define FILE_DEVICE_CONSOLE 0x00000050

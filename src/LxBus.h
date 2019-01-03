@@ -9,18 +9,25 @@
     (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
 #endif
 
-// LxCore!LxpControlDeviceIoctlServerPort
+/* 
+* 0x220033u
+* LxCore!LxpControlDeviceIoctlServerPort
+* IoCreateFile creates \Device\lxss\{Instance-GUID}\MessagePort
+*/
 #define IOCTL_LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION \
-    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS) //0x220033u
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS)
 
 typedef union _LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG {
     unsigned int Timeout;
     unsigned int ClientHandle;
 } LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG, *PLXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG;
 
-// LxCore!LxBuspIpcConnectionMarshalHandle
+/*
+* 0x22009Fu
+* LxCore!LxBuspIpcConnectionMarshalHandle
+*/
 #define IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_HANDLE \
-    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x27, METHOD_NEITHER, FILE_ANY_ACCESS) //0x22009Fu
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x27, METHOD_NEITHER, FILE_ANY_ACCESS)
 
 typedef enum _LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE {
     ConsoleHandleType,
@@ -38,9 +45,13 @@ typedef union _LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA {
     unsigned long long HandleIdCount;
 } LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA, *PLXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA;
 
-// LxCore!LxBuspIpcConnectionUnmarshalVfsFile
+/*
+* 0x2200BBu
+* LxCore!LxBuspIpcConnectionUnmarshalVfsFile
+* IoCreateFile creates \Device\lxss\{Instance-GUID}\VfsFile
+*/
 #define IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE \
-    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x2E, METHOD_NEITHER, FILE_ANY_ACCESS) //0x2200BBu
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x2E, METHOD_NEITHER, FILE_ANY_ACCESS) 
 
 typedef union _LXBUS_IPC_VFS_HANDLE {
     struct {
@@ -94,9 +105,25 @@ typedef struct _LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE {
     unsigned short WindowWidth;
 } LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE, *PLXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE;
 
-// LxCore!LxpControlDeviceIoctlLxProcess
+/*
+* 0x2200C3u
+* LxCore!LxBuspIpcConnectionCreateUnnamedServer
+* IoCreateFile creates \Device\lxss\{Instance-GUID}\ServerPort
+*/
+#define IOCTL_LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x30, METHOD_NEITHER, FILE_ANY_ACCESS)
+
+typedef struct _LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG {
+    unsigned long long ServerPortHandle;
+    unsigned long long ServerPortIdCount;
+} LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG, *PLXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG;
+
+/*
+* 0x2200D3u
+* LxCore!LxpControlDeviceIoctlLxProcess
+*/
 #define IOCTL_LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL \
-    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x34, METHOD_NEITHER, FILE_ANY_ACCESS) //0x2200D3u
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x34, METHOD_NEITHER, FILE_ANY_ACCESS) 
 
 typedef union _LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG {
     unsigned int TimeOut;

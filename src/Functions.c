@@ -38,13 +38,13 @@ void Usage(
     void)
 {
     wprintf(
-        L"\nWslReverse -- (c) Copyright 2018 Biswapriyo Nath\n"
+        L"\nWslReverse -- (c) Copyright 2018-19 Biswapriyo Nath\n"
         L"Licensed under GNU Public License version 3 or higher\n\n"
         L"Use hidden COM interface of Windows Subsystem for Linux for fun\n"
         L"Usage: WslReverse.exe [-] [option] [argument]\n\n"
         L"Options:\n"
         L"  -d, --get-id       [distribution name]      Get distribution ID.\n"
-        L"  -e, --export       [distribution name]      Exports the distribution to a tar file.\n"
+        L"  -e, --export       [distribution name]      Exports selected distribution to a tar file.\n"
         L"  -G, --get-default                           Get default distribution ID.\n"
         L"  -g, --get-config   [distribution name]      Get distribution configuration.\n"
         L"  -h, --help                                  Show list of options.\n"

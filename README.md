@@ -8,7 +8,7 @@ Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspir
 
 ## How to build
 
-Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Alternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe /p:Configuration=Release`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `make` command for mingw-w64/msys2/cygwin. 
+Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Alternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `make` command. 
 
 ## How to use
 
@@ -18,6 +18,7 @@ This project only shows the hidden COM methods which may change in future Window
 Usage: WslReverse.exe [-] [option] [argument]
 Options:
     -d, --get-id       [distribution name]      Get distribution GUID.
+    -e, --export       [distribution name]      Exports selected distribution to a tar file.
     -G, --get-default                           Get default distribution GUID.
     -g, --get-config   [distribution name]      Get distribution configuration.
     -h, --help                                  Show list of options.
@@ -30,9 +31,9 @@ Options:
     -u, --uninstall    [distribution name]      Uninstall distribution.
 ```
 
-## Project Overview
+## Project layout
 
-Here are the overview of source files according to their dependencies:
+The project layout of source files according to their dependencies:
 
 ```
 src\
@@ -61,6 +62,18 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 * [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` placed separately from `LxssManager.DLL` file. 
 * [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade and uninstallation procedure. 
 
+## Trace Events
+
+* List of Event Providers and associated GUID:
+
+|           Provider Name               |             Provider GUID              |    File Name     |
+|:-------------------------------------:|:--------------------------------------:|:----------------:|
+| Microsoft.Windows.Lxss.Manager        | {B99CDB5A-039C-5046-E672-1A0DE0A40211} | LxssManager.dll  |
+| Microsoft.Windows.Lxss.Heartbeat      | {0451AB4F-F74D-4008-B491-EB2E5F5D8B89} | LxssManager.dll  |
+| Microsoft.Windows.Subsystem.Adss      | {754E4536-6735-4194-BE81-1374BD2E9B0D} | LxCore.sys       |
+| Microsoft.Windows.Subsystem.LxCore    | {0CD1C309-0878-4515-83DB-749843B3F5C9} | LxCore.sys       |
+| Microsoft.Windows.Subsystem.Lxss      | {D90B9468-67F0-5B3B-42CC-82AC81FFD960} | WslHost.exe      |
+
 ## Acknowledgments
 
 This project uses some definitions and data types from followings. Thanks to:
@@ -77,7 +90,7 @@ Need ideas to connect WSL with any other terminals like [mintty][5] without any 
 This project is licensed under GNU Public License v3 or higher. You are free to study, modify or distribute the source code. 
 
 ```
-WslReverse -- (c) Copyright 2018 Biswapriyo Nath
+WslReverse -- (c) Copyright 2018-19 Biswapriyo Nath
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

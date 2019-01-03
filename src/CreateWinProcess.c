@@ -76,21 +76,25 @@ NTSTATUS OpenAnonymousPipe(
     return Status;
 }
 
+typedef struct _X_HPCON {
+    HANDLE hWritePipe;
+    HANDLE hConDrvReference;
+    HANDLE hConHostProcess;
+} X_HPCON, *PX_HPCON;
+
 BOOL CreateWinProcess(
     PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
     HPCON hpCon = NULL;
-    SIZE_T AttrSize;
+    SIZE_T AttrSize = 0;
     STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
-    PROCESS_BASIC_INFORMATION BasicInfo;
+    PROCESS_BASIC_INFORMATION BasicInfo = { 0 };
     HANDLE HeapHandle = GetProcessHeap();
+    LPPROC_THREAD_ATTRIBUTE_LIST AttrList = NULL;
 
     BOOL bRes = InitializeProcThreadAttributeList(NULL, 1, 0, &AttrSize);
-    LPPROC_THREAD_ATTRIBUTE_LIST AttrList = RtlAllocateHeap(
-        HeapHandle,
-        HEAP_ZERO_MEMORY,
-        AttrSize);
+    AttrList = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, AttrSize);
     bRes = InitializeProcThreadAttributeList(AttrList, 1, 0, &AttrSize);
 
     if (LxReceiveMsg->IsWithoutPipe)
@@ -108,9 +112,24 @@ BOOL CreateWinProcess(
         ProcResult->hpCon = hpCon;
         Log(hRes, L"CreatePseudoConsole");
 
-        bRes = UpdateProcThreadAttribute(
-            AttrList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, //0x20016u
-            hpCon, sizeof(hpCon), NULL, NULL);
+        // Cast hpCon to a internal structure for ConHost PID
+        PROCESS_BASIC_INFORMATION ProcessBasicInfo = { 0 };
+        NTSTATUS Status = ZwQueryInformationProcess(
+            ((PX_HPCON)hpCon)->hConHostProcess,
+            ProcessBasicInformation,
+            &ProcessBasicInfo,
+            sizeof(ProcessBasicInfo),
+            NULL);
+
+        if(NT_SUCCESS(Status))
+            wprintf(
+                L"[*] PseudoConsole ConHost PID: %lld\n",
+                ProcessBasicInfo.UniqueProcessId);
+
+        if(AttrList)
+            bRes = UpdateProcThreadAttribute(
+                AttrList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, //0x20016u
+                hpCon, sizeof(hpCon), NULL, NULL);
     }
     else
     {
@@ -123,9 +142,10 @@ BOOL CreateWinProcess(
             ToHandle(LxReceiveMsg->VfsHandle[1].Handle),
             ToHandle(LxReceiveMsg->VfsHandle[2].Handle) };
 
-        bRes = UpdateProcThreadAttribute(
-            AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
-            Value, sizeof(Value), NULL, NULL);
+        if(AttrList)
+            bRes = UpdateProcThreadAttribute(
+                AttrList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
+                Value, sizeof(Value), NULL, NULL);
     }
 
     SInfoEx.StartupInfo.cb = sizeof(SInfoEx);
@@ -174,7 +194,7 @@ BOOL CreateWinProcess(
             ProcResult->ProcInfo.hProcess,
             BasicInfo.PebBaseAddress,
             &Peb,
-            sizeof(PEB64),
+            sizeof(Peb),
             &NumberOfBytesRead);
 
         if (NT_SUCCESS(Status))

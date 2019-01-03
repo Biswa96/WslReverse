@@ -6,7 +6,7 @@ typedef struct _GUID GUID;
 typedef struct _WslSession WslSession, *PWslSession;
 
 HRESULT CreateLxProcess(
-    PWslSession* WslSession,
+    PWslSession* wslSession,
     GUID* DistroID);
 
 #endif //CREATELXPROCESS_H

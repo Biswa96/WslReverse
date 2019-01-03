@@ -30,7 +30,6 @@ void CreateProcessWorker(
             L"[*] CreateProcessWorker ServerHandle: %lu\n",
             ToULong(ServerHandle));
 
-        // IoCreateFile creates \Device\lxss\{Instance-GUID}\MessagePort
         Status = ZwDeviceIoControlFile(
             ServerHandle,
             NULL,
@@ -40,6 +39,21 @@ void CreateProcessWorker(
             IOCTL_LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION,
             &ConnectionMsg, sizeof(ConnectionMsg),
             &ConnectionMsg, sizeof(ConnectionMsg));
+
+#ifdef Experiment
+        // LxssManager creates unnamed IPC server at first
+        LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG UnnamedServerMsg = { 0 };
+
+        Status = ZwDeviceIoControlFile(
+            ToHandle(ConnectionMsg.ClientHandle),
+            NULL,
+            NULL,
+            NULL,
+            &Isb,
+            IOCTL_LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER,
+            NULL, 0,
+            &UnnamedServerMsg, sizeof(UnnamedServerMsg));
+#endif
 
         if (!NT_SUCCESS(Status))
             break;
@@ -54,7 +68,7 @@ void CreateProcessWorker(
             ToHandle(ConnectionMsg.ClientHandle),
             NULL);
         if (NT_SUCCESS(Status))
-            Log(Status, L"CreateProcessWorker TpAllocWork");
+            Log(Status, L"CreateProcessAsync TpAllocWork");
 
         ConnectionMsg.ClientHandle = 0;
         TpPostWork(WorkReturn);
@@ -112,22 +126,21 @@ BOOL InitializeInterop(
         NULL);
 
     if (NT_SUCCESS(Status))
-        Log(Status, L"InitializeInterop TpAllocWork");
+        Log(Status, L"CreateProcessWorker TpAllocWork");
     TpPostWork(WorkReturn);
 
     // Configure all the required handles for wslhost.exe process
-    size_t AttrbSize;
+    size_t AttrbSize = 0;
+    LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = NULL;
     InitializeProcThreadAttributeList(NULL, 1, 0, &AttrbSize);
-    LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = RtlAllocateHeap(
-        HeapHandle,
-        HEAP_ZERO_MEMORY,
-        AttrbSize);
+    AttrbList = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, AttrbSize);
     bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
 
     HANDLE Value[3] = { ServerHandle, EventHandle, ProcHandle };
-    bRes = UpdateProcThreadAttribute(
-        AttrbList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
-        Value, sizeof(Value), NULL, NULL);
+    if(AttrbList)
+        bRes = UpdateProcThreadAttribute(
+            AttrbList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
+            Value, sizeof(Value), NULL, NULL);
 
     // Create required string for CreateProcessW
     ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
@@ -147,10 +160,11 @@ BOOL InitializeInterop(
         ToULong(ProcHandle));
 
     PROCESS_INFORMATION ProcInfo;
-    STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
+    STARTUPINFOEXW SInfoEx = { 0 };
     SInfoEx.StartupInfo.cb = sizeof(SInfoEx);
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
+    // SInfoEx.StartupInfo.wShowWindow = SW_SHOWDEFAULT;
     SInfoEx.lpAttributeList = AttrbList;
 
     // bInheritHandles must be TRUE for wslhost.exe
@@ -192,7 +206,7 @@ BOOL InitializeInterop(
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, AttrbList);
     ZwClose(EventHandle);
-    // NtClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
+    // ZwClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
     ZwClose(ProcHandle);
     ZwClose(ProcInfo.hProcess);
     ZwClose(ProcInfo.hThread);
@@ -200,7 +214,7 @@ BOOL InitializeInterop(
 }
 
 HRESULT CreateLxProcess(
-    PWslSession* WslSession,
+    PWslSession* wslSession,
     GUID* DistroID)
 {
     ULONG InputMode = 0, OutputMode = 0;
@@ -265,7 +279,7 @@ HRESULT CreateLxProcess(
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
-#if 0
+#ifdef Experiment
     // Fun with Lxss handles
     StdHandles.StdIn.Handle = HandleToULong(hIn);
     StdHandles.StdIn.Pipe = 1;
@@ -275,8 +289,8 @@ HRESULT CreateLxProcess(
     StdHandles.StdErr.Pipe = 2;
 #endif
 
-    HRESULT hRes = (*WslSession)->CreateLxProcess(
-        WslSession,
+    HRESULT hRes = (*wslSession)->CreateLxProcess(
+        wslSession,
         DistroID,
         "/bin/bash",
         ARRAY_SIZE(Arguments),
