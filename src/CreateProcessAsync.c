@@ -8,11 +8,12 @@ NTSTATUS WaitForMessage(
     HANDLE EventHandle,
     PIO_STATUS_BLOCK IoStatusBlock)
 {
+    NTSTATUS Status;
     IO_STATUS_BLOCK IoRequestToCancel = { 0 };
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
-    NTSTATUS Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
+    Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
         ZwCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
@@ -26,14 +27,15 @@ ULONG ProcessInteropMessages(
     HANDLE ReadPipeHandle,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
-    DWORD ExitCode;
-    IO_STATUS_BLOCK Isb;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatusBlock;
+    PROCESS_BASIC_INFORMATION BasicInfo = { 0 };
     LARGE_INTEGER ByteOffset = { 0 };
     LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg = { 0 };
 
     // Create an event to sync all reads and writes
     HANDLE EventHandle = NULL;
-    NTSTATUS Status = ZwCreateEvent(
+    Status = ZwCreateEvent(
         &EventHandle,
         EVENT_ALL_ACCESS,
         NULL,
@@ -46,7 +48,7 @@ ULONG ProcessInteropMessages(
         EventHandle,
         NULL,
         NULL,
-        &Isb,
+        &IoStatusBlock,
         &LxTerminalMsg,
         sizeof(LxTerminalMsg),
         &ByteOffset,
@@ -63,7 +65,12 @@ ULONG ProcessInteropMessages(
             NULL); // Temporary solution
     }
 
-    GetExitCodeProcess(ProcResult->ProcInfo.hProcess, &ExitCode);
+    Status = ZwQueryInformationProcess(
+        ProcResult->ProcInfo.hProcess,
+        ProcessBasicInformation,
+        &BasicInfo,
+        sizeof(BasicInfo),
+        NULL);
 
     // Resize pseudo console when winsize.ws_row and winsize.ws_col received
     COORD ConsoleSize; 
@@ -72,7 +79,7 @@ ULONG ProcessInteropMessages(
     ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
 
     ZwClose(EventHandle);
-    return ExitCode;
+    return BasicInfo.ExitStatus;
 }
 
 void CreateProcessAsync(
@@ -84,14 +91,17 @@ void CreateProcessAsync(
     UNREFERENCED_PARAMETER(Work);
 
     BOOL bRes;
+    NTSTATUS Status;
     IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER ByteOffset = { 0 };
     LXSS_MESSAGE_PORT_RECEIVE_OBJECT Buffer;
     PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg = NULL;
     HANDLE EventHandle = NULL, HeapHandle = GetProcessHeap();
+    RTL_CRITICAL_SECTION CriticalSection;
 
     // Create an event to sync all reads and writes
-    NTSTATUS Status = ZwCreateEvent(
+    bRes = RtlInitializeCriticalSectionEx(&CriticalSection, 0, 0);
+    Status = ZwCreateEvent(
         &EventHandle,
         EVENT_ALL_ACCESS,
         NULL,
@@ -140,7 +150,7 @@ void CreateProcessAsync(
 
     for (int i = 0; i < TOTAL_IO_HANDLES; i++)
     {
-        // IoCreateFile creates \Device\lxss\{Instance-GUID}\VfsFile
+        // Unmarshal standard I/O handles from file descriptors
         Status = ZwDeviceIoControlFile(
             ClientHandle,
             NULL,
@@ -157,7 +167,7 @@ void CreateProcessAsync(
             HANDLE_FLAG_INHERIT);
     }
 
-    // Create Windows process from unmarshalled VFS handles
+    // Create Windows process using unmarshalled VFS handles
     LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
     bRes = CreateWinProcess(LxReceiveMsg, &ProcResult);
     if(!bRes)
@@ -236,4 +246,5 @@ void CreateProcessAsync(
     ZwClose(ReadPipeHandle);
     ZwClose(WritePipeHandle);
     ZwClose(ClientHandle);
+    RtlDeleteCriticalSection(&CriticalSection);
 }

@@ -36,7 +36,7 @@ unsigned long long GetConhostServerId(
             NULL, 0,
             &ConHostPid, sizeof(ConHostPid));
 
-        if (Status >= 0)
+        if (NT_SUCCESS(Status))
             return ConHostPid;
     }
 

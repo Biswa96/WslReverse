@@ -255,17 +255,18 @@ struct _WslSession
 
     /**
     * PVOID ObjectStublessClient19;
-    * Element not found
+    * Allow only when RootLxBusAccess REG_DWORD enabled
+    * Shows 'element not found' when no LxInstance present
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterLxBusServer)(
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId,
+        _In_opt_ GUID* DistroId,
         _In_ PSTR LxBusServerName,
         _Out_ PHANDLE ServerHandle);
 
     /**
     * PVOID ObjectStublessClient20;
-    * Command; "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
+    * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
         _In_ PWslSession* wslSession,

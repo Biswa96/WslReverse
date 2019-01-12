@@ -6,9 +6,6 @@
 #include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
 
-#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
-#define REQUIRED_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
-
 void CreateProcessWorker(
     PTP_CALLBACK_INSTANCE Instance,
     HANDLE ServerHandle,
@@ -18,7 +15,7 @@ void CreateProcessWorker(
     UNREFERENCED_PARAMETER(Work);
 
     NTSTATUS Status;
-    IO_STATUS_BLOCK Isb;
+    IO_STATUS_BLOCK IoStatusBlock;
     PTP_WORK WorkReturn = NULL;
     LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG ConnectionMsg = { 0 };
 
@@ -35,25 +32,10 @@ void CreateProcessWorker(
             NULL,
             NULL,
             NULL,
-            &Isb,
+            &IoStatusBlock,
             IOCTL_LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION,
             &ConnectionMsg, sizeof(ConnectionMsg),
             &ConnectionMsg, sizeof(ConnectionMsg));
-
-#ifdef Experiment
-        // LxssManager creates unnamed IPC server at first
-        LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG UnnamedServerMsg = { 0 };
-
-        Status = ZwDeviceIoControlFile(
-            ToHandle(ConnectionMsg.ClientHandle),
-            NULL,
-            NULL,
-            NULL,
-            &Isb,
-            IOCTL_LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER,
-            NULL, 0,
-            &UnnamedServerMsg, sizeof(UnnamedServerMsg));
-#endif
 
         if (!NT_SUCCESS(Status))
             break;
@@ -67,6 +49,7 @@ void CreateProcessWorker(
             (PTP_WORK_CALLBACK)CreateProcessAsync,
             ToHandle(ConnectionMsg.ClientHandle),
             NULL);
+
         if (NT_SUCCESS(Status))
             Log(Status, L"CreateProcessAsync TpAllocWork");
 
@@ -213,6 +196,10 @@ BOOL InitializeInterop(
     return bRes;
 }
 
+#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
+#define ENABLE_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
+#define ENABLE_OUTPUT_MODE (DISABLE_NEWLINE_AUTO_RETURN | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)
+
 HRESULT CreateLxProcess(
     PWslSession* wslSession,
     GUID* DistroID)
@@ -227,7 +214,7 @@ HRESULT CreateLxProcess(
     LXSS_STD_HANDLES StdHandles = { 0 };
 
     // Console Window handle of current process (if any)
-    X_PRTL_USER_PROCESS_PARAMETERS ProcParam = UserProcessParameter();
+    PRTL_USER_PROCESS_PARAMETERS ProcParam = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters;
     HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
     wprintf(
         L"[*] CreateLxProcess ConHost PID: %lld Handle: %ld\n",
@@ -237,21 +224,17 @@ HRESULT CreateLxProcess(
     // Preapare environments and argument
     PSTR Arguments[] = { "-bash" };
     ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
-    PWSTR PathVariable = RtlAllocateHeap(
-        HeapHandle,
-        HEAP_ZERO_MEMORY, 
-        nSize * sizeof(wchar_t));
+    PWSTR PathVariable = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, nSize * sizeof(wchar_t));
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Configure Console Handles
     HANDLE hIn = ProcParam->StandardInput;
     HANDLE hOut = ProcParam->StandardOutput;
 
-    if (GetFileType(hIn) == FILE_TYPE_CHAR
-        && GetConsoleMode(hIn, &InputMode))
+    if (GetFileType(hIn) == FILE_TYPE_CHAR && GetConsoleMode(hIn, &InputMode))
     {
         // Switch to VT-100 Input Console
-        ULONG NewMode = (InputMode & (~DISABLED_INPUT_MODE)) | REQUIRED_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
+        ULONG NewMode = (InputMode & (~DISABLED_INPUT_MODE)) | ENABLE_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
         SetConsoleMode(hIn, NewMode);
 
         // Switch input to UTF-8
@@ -261,10 +244,7 @@ HRESULT CreateLxProcess(
     if (GetConsoleMode(hOut, &OutputMode))
     {
         // Switch to VT-100 Output Console
-        ULONG NewMode = (OutputMode
-            | DISABLE_NEWLINE_AUTO_RETURN
-            | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-            | ENABLE_PROCESSED_OUTPUT); // 0xD
+        ULONG NewMode = (OutputMode | ENABLE_OUTPUT_MODE); // 0xD
         SetConsoleMode(hOut, NewMode);
 
         // Switch output to UTF-8
@@ -279,7 +259,7 @@ HRESULT CreateLxProcess(
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
-#ifdef Experiment
+#if 0
     // Fun with Lxss handles
     StdHandles.StdIn.Handle = HandleToULong(hIn);
     StdHandles.StdIn.Pipe = 1;
@@ -323,19 +303,20 @@ HRESULT CreateLxProcess(
 
         if (SetHandleInformation(ProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
-            IO_STATUS_BLOCK Isb;
+            NTSTATUS Status;
+            IO_STATUS_BLOCK IoStatusBlock;
             LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
             WaitForSignalMsg.TimeOut = INFINITE;
 
             InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
 
             // Use the IOCTL to wait on the process to terminate
-            NTSTATUS Status = ZwDeviceIoControlFile(
+            Status = ZwDeviceIoControlFile(
                 ProcessHandle,
                 NULL,
                 NULL,
                 NULL,
-                &Isb,
+                &IoStatusBlock,
                 IOCTL_LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg),
                 &WaitForSignalMsg, sizeof(WaitForSignalMsg));

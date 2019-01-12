@@ -2,7 +2,6 @@
 #define WININTERNAL_H
 
 #include <Windows.h>
-#include <winternl.h>
 
 // From DetoursNT/DetoursNT.h
 #ifndef NT_SUCCESS
@@ -41,9 +40,30 @@
 #define FILE_PIPE_QUEUE_OPERATION 0
 #define FILE_PIPE_COMPLETE_OPERATION 1
 
+// Flags from winternl.h
+#define OBJ_INHERIT 2
+#define OBJ_CASE_INSENSITIVE 64
+#ifndef __MINGW32__
+#define FILE_CREATE 2
+#define FILE_SYNCHRONOUS_IO_NONALERT 32
+#define FILE_NON_DIRECTORY_FILE 64
+#endif
+
 // Some handmade
 #define ToULong(x) (unsigned long)(unsigned long long)(x)
 #define ToHandle(x) (void*)(unsigned long long)(x)
+
+typedef struct _STRING {
+    USHORT Length;
+    USHORT MaximumLength;
+    PCHAR Buffer;
+} STRING, ANSI_STRING, *PSTRING;
+
+typedef struct _UNICODE_STRING {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR  Buffer;
+} UNICODE_STRING, *PUNICODE_STRING;
 
 typedef struct _CURDIR {
     UNICODE_STRING DosPath;
@@ -59,10 +79,7 @@ typedef struct _RTL_DRIVE_LETTER_CURDIR {
 
 #define RTL_MAX_DRIVE_LETTERS 32
 
-// "X_" prefix is used to remove conflict
-// with the predefined structure in winternl.h
-
-typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
+typedef struct _RTL_USER_PROCESS_PARAMETERS {
     ULONG MaximumLength;
     ULONG Length;
     ULONG Flags;
@@ -97,15 +114,7 @@ typedef struct _X_RTL_USER_PROCESS_PARAMETERS {
     ULONG ProcessGroupId;
     ULONG LoaderThreads;
     UNICODE_STRING RedirectionDllName;
-} X_RTL_USER_PROCESS_PARAMETERS, *X_PRTL_USER_PROCESS_PARAMETERS;
-
-// Danger zone black magic
-#ifdef _MSC_VER
-X_PRTL_USER_PROCESS_PARAMETERS UserProcessParameter(void); // From UserProcessParameter.asm file
-#else
-#define UserProcessParameter() \
-    (X_PRTL_USER_PROCESS_PARAMETERS)NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
-#endif
+} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
 typedef struct _ACTIVATION_CONTEXT_DATA {
     ULONG Magic;
@@ -124,10 +133,19 @@ typedef struct _LEAP_SECOND_DATA {
     LARGE_INTEGER Data[ANYSIZE_ARRAY];
 } LEAP_SECOND_DATA, *PLEAP_SECOND_DATA;
 
-//
-// PEB only for 64bit environment
-//
-typedef struct _PEB64 {
+typedef struct _PEB_LDR_DATA {
+    ULONG Length;
+    BOOLEAN Initialized;
+    HANDLE SsHandle;
+    LIST_ENTRY InLoadOrderModuleList;
+    LIST_ENTRY InMemoryOrderModuleList;
+    LIST_ENTRY InInitializationOrderModuleList;
+    PVOID EntryInProgress;
+    BOOLEAN ShutdownInProgress;
+    HANDLE ShutdownThreadId;
+} PEB_LDR_DATA, *PPEB_LDR_DATA;
+
+typedef struct _PEB {
     UCHAR InheritedAddressSpace;
     UCHAR ReadImageFileExecOptions;
     UCHAR BeingDebugged;
@@ -148,9 +166,9 @@ typedef struct _PEB64 {
     HANDLE Mutant;
     HMODULE ImageBaseAddress;
     PPEB_LDR_DATA Ldr;
-    X_PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
+    PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
     PVOID SubSystemData;
-    PVOID ProcessHeap;
+    HANDLE ProcessHeap;
     PRTL_CRITICAL_SECTION FastPebLock;
     PSLIST_HEADER AtlThunkSListPtr;
     PVOID IFEOKey;
@@ -271,9 +289,30 @@ typedef struct _PEB64 {
             ULONG ReservedWin32Flags : 31;
         };
     };
-} PEB64, *PPEB64;
+} PEB, *PPEB;
 
-#ifdef _MSC_VER
+typedef struct _TEB {
+    PVOID Unused[12];
+    PPEB ProcessEnvironmentBlock;
+    ULONG LastErrorValue;
+} TEB, *PTEB;
+
+typedef struct _OBJECT_ATTRIBUTES {
+    ULONG Length;
+    HANDLE RootDirectory;
+    PUNICODE_STRING ObjectName;
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+
+typedef struct _IO_STATUS_BLOCK {
+    union {
+        NTSTATUS Status;
+        PVOID Pointer;
+    } u;
+    ULONG_PTR Information;
+} IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
 
 typedef struct _FILE_FS_DEVICE_INFORMATION {
     ULONG DeviceType;
@@ -298,7 +337,18 @@ typedef enum _FSINFOCLASS {
     FileFsMaximumInformation
 } FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
 
-#endif // _MSC_VER
+typedef struct _PROCESS_BASIC_INFORMATION {
+    NTSTATUS ExitStatus;
+    PPEB PebBaseAddress;
+    ULONG_PTR AffinityMask;
+    ULONG BasePriority;
+    ULONG_PTR UniqueProcessId;
+    ULONG_PTR InheritedFromUniqueProcessId;
+} PROCESS_BASIC_INFORMATION, *PPROCESS_BASIC_INFORMATION;
+
+typedef enum _PROCESSINFOCLASS {
+    ProcessBasicInformation = 0
+} PROCESSINFOCLASS;
 
 NTSTATUS ZwQueryInformationProcess(
     _In_ HANDLE ProcessHandle,
@@ -325,7 +375,7 @@ NTSTATUS ZwOpenFile(
 NTSTATUS ZwReadFile(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
-    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcRoutine,
     _In_opt_ PVOID ApcContext,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_ PVOID Buffer,
@@ -336,7 +386,7 @@ NTSTATUS ZwReadFile(
 NTSTATUS ZwWriteFile(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
-    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcRoutine,
     _In_opt_ PVOID ApcContext,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_ PVOID Buffer,
@@ -355,7 +405,7 @@ NTSTATUS ZwCancelIoFileEx(
 NTSTATUS ZwDeviceIoControlFile(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
-    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcRoutine,
     _In_opt_ PVOID ApcContext,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _In_ ULONG IoControlCode,
@@ -447,5 +497,13 @@ BOOLEAN RtlFreeHeap(
     _In_ PVOID HeapHandle,
     _In_opt_ ULONG Flags,
     _In_opt_ PVOID BaseAddress);
+
+NTSTATUS RtlInitializeCriticalSectionEx(
+    _Out_ LPCRITICAL_SECTION lpCriticalSection,
+    _In_ DWORD dwSpinCount,
+    _In_ DWORD Flags);
+
+void RtlDeleteCriticalSection(
+    _Inout_ LPCRITICAL_SECTION lpCriticalSection);
 
 #endif // WININTERNAL_H

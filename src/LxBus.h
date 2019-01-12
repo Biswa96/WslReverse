@@ -98,12 +98,37 @@ typedef struct _LXSS_MESSAGE_PORT_SEND_OBJECT {
     unsigned int UnknownB;
 } LXSS_MESSAGE_PORT_SEND_OBJECT, *PLXSS_MESSAGE_PORT_SEND_OBJECT;
 
+/*
+* Resize message is created from ioctl(fd, TIOCGWINSZ, &winsize);
+* Resize message is applied to ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
+*/
 typedef struct _LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE {
     unsigned int TerminalResizeFlag;
     unsigned int BufferSize;
     unsigned short WindowHeight;
     unsigned short WindowWidth;
 } LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE, *PLXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE;
+
+/*
+* 0x2200A7u
+* LxCore!LxBuspIpcConnectionMarshalConsole
+*/
+#define IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_CONSOLE \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x29, METHOD_NEITHER, FILE_ANY_ACCESS)
+
+typedef union _LXBUS_IPC_MESSAGE_MARSHAL_CONSOLE_MSG {
+    struct {
+        unsigned int Handle;
+        LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE Type;
+    };
+    unsigned long long ConsoleIdCount;
+} LXBUS_IPC_MESSAGE_MARSHAL_CONSOLE_MSG, *PLXBUS_IPC_MESSAGE_MARSHAL_CONSOLE_MSG;
+
+typedef struct _LXBUS_IPC_MESSAGE_SEND_CONSOLE_DATA {
+    unsigned int Flag;
+    unsigned int BufferSize;
+    LXBUS_IPC_MESSAGE_MARSHAL_CONSOLE_MSG ConsoleMessage;
+} LXBUS_IPC_MESSAGE_SEND_CONSOLE_DATA, *PLXBUS_IPC_MESSAGE_SEND_CONSOLE_DATA;
 
 /*
 * 0x2200C3u
@@ -117,6 +142,13 @@ typedef struct _LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG {
     unsigned long long ServerPortHandle;
     unsigned long long ServerPortIdCount;
 } LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG, *PLXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG;
+
+/*
+* 0x2200CFu
+* LxCore!LxBuspIpcConnectionDisconnectConsole
+*/
+#define IOCTL_LXBUS_IPC_CONNECTION_DISCONNECT_CONSOLE \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x33, METHOD_NEITHER, FILE_ANY_ACCESS)
 
 /*
 * 0x2200D3u

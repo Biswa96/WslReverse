@@ -16,13 +16,14 @@ NTSTATUS OpenAnonymousPipe(
     PHANDLE ReadPipeHandle,
     PHANDLE WritePipeHandle)
 {
-    HANDLE hNamedPipeFile = NULL, hFile = NULL;
+    NTSTATUS Status;
+    HANDLE hPipeServer = NULL, hNamedPipeFile = NULL, hFile = NULL;
     LARGE_INTEGER DefaultTimeOut;
     IO_STATUS_BLOCK IoStatusBlock;
     UNICODE_STRING PipeObj = { 0 };
     OBJECT_ATTRIBUTES ObjectAttributes = { 0 };
 
-    HANDLE hPipeServer = CreateFileW(
+    hPipeServer = CreateFileW(
         L"\\\\.\\pipe\\",
         GENERIC_READ,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -39,7 +40,7 @@ NTSTATUS OpenAnonymousPipe(
     ObjectAttributes.RootDirectory = hPipeServer;
     ObjectAttributes.Length = sizeof(ObjectAttributes);
 
-    NTSTATUS Status = ZwCreateNamedPipeFile(
+    Status = ZwCreateNamedPipeFile(
         &hNamedPipeFile,
         GENERIC_READ | SYNCHRONIZE | FILE_WRITE_ATTRIBUTES,
         &ObjectAttributes,
@@ -69,7 +70,7 @@ NTSTATUS OpenAnonymousPipe(
         FILE_NON_DIRECTORY_FILE);
     Log(Status, L"NtOpenFile");
 
-    // return handles to caller
+    // Return handles to caller
     *ReadPipeHandle = hNamedPipeFile;
     *WritePipeHandle = hFile;
     ZwClose(hPipeServer);
@@ -86,6 +87,7 @@ BOOL CreateWinProcess(
     PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     PLX_CREATE_PROCESS_RESULT ProcResult)
 {
+    NTSTATUS Status;
     HPCON hpCon = NULL;
     SIZE_T AttrSize = 0;
     STARTUPINFOEXW SInfoEx = { 0 }; // Must set all members to Zero
@@ -99,7 +101,9 @@ BOOL CreateWinProcess(
 
     if (LxReceiveMsg->IsWithoutPipe)
     {
-        COORD ConsoleSize = { LxReceiveMsg->WindowWidth, LxReceiveMsg->WindowHeight };
+        COORD ConsoleSize;
+        ConsoleSize.X = LxReceiveMsg->WindowWidth;
+        ConsoleSize.Y = LxReceiveMsg->WindowHeight;
 
         HRESULT hRes = CreatePseudoConsole(
             ConsoleSize,
@@ -113,18 +117,17 @@ BOOL CreateWinProcess(
         Log(hRes, L"CreatePseudoConsole");
 
         // Cast hpCon to a internal structure for ConHost PID
-        PROCESS_BASIC_INFORMATION ProcessBasicInfo = { 0 };
-        NTSTATUS Status = ZwQueryInformationProcess(
+        Status = ZwQueryInformationProcess(
             ((PX_HPCON)hpCon)->hConHostProcess,
             ProcessBasicInformation,
-            &ProcessBasicInfo,
-            sizeof(ProcessBasicInfo),
+            &BasicInfo,
+            sizeof(BasicInfo),
             NULL);
 
         if(NT_SUCCESS(Status))
             wprintf(
                 L"[*] PseudoConsole ConHost PID: %lld\n",
-                ProcessBasicInfo.UniqueProcessId);
+                BasicInfo.UniqueProcessId);
 
         if(AttrList)
             bRes = UpdateProcThreadAttribute(
@@ -140,7 +143,8 @@ BOOL CreateWinProcess(
         HANDLE Value[3] = {
             ToHandle(LxReceiveMsg->VfsHandle[0].Handle),
             ToHandle(LxReceiveMsg->VfsHandle[1].Handle),
-            ToHandle(LxReceiveMsg->VfsHandle[2].Handle) };
+            ToHandle(LxReceiveMsg->VfsHandle[2].Handle)
+        };
 
         if(AttrList)
             bRes = UpdateProcThreadAttribute(
@@ -178,7 +182,7 @@ BOOL CreateWinProcess(
         ToULong(ProcResult->ProcInfo.hThread),
         ProcResult->ProcInfo.dwProcessId);
 
-    NTSTATUS Status = ZwQueryInformationProcess(
+    Status = ZwQueryInformationProcess(
         ProcResult->ProcInfo.hProcess,
         ProcessBasicInformation,
         &BasicInfo,
@@ -187,7 +191,7 @@ BOOL CreateWinProcess(
 
     if (NT_SUCCESS(Status))
     {
-        PEB64 Peb;
+        PEB Peb;
         SIZE_T NumberOfBytesRead = 0;
 
         Status = ZwReadVirtualMemory(
@@ -205,7 +209,7 @@ BOOL CreateWinProcess(
             ProcResult->IsSubsystemGUI |= INTEROP_RESTORE_CONSOLE_STATE_MODE;
     }
 
-    // Set lasterror always success intentionally
+    // Set lasterror always success intentionally ;)
     ProcResult->LastError = ERROR_SUCCESS;
 
     RtlFreeHeap(HeapHandle, 0, AttrList);

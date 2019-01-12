@@ -1,7 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; NTSTATUS LxpInstanceLoadSettingsFromRegistry()
-; RTL_QUERY_REGISTRY_TABLE QueryTable[11]
+; RTL_QUERY_REGISTRY_TABLE QueryTable[12]
 ; RtlQueryRegistryValuesEx(RTL_REGISTRY_SERVICES, L"lxss", QueryTable, NULL, NULL);
 
 [HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\lxss]
