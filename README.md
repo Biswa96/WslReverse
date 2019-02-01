@@ -17,6 +17,7 @@ This project only shows the hidden COM methods which may change in future Window
 ```
 Usage: WslReverse.exe [-] [option] [argument]
 Options:
+    -b, --bus          [distribution name]      Create own LxBus server.
     -d, --get-id       [distribution name]      Get distribution GUID.
     -e, --export       [distribution name]      Exports selected distribution to a tar file.
     -G, --get-default                           Get default distribution GUID.
@@ -47,12 +48,12 @@ src\
         |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
         |   +-- WslSession: LxssUserSession COM interface
         |   |
-        |   |
         +-- CreateLxProcess: Run WSL pico processes
             |
-            |   +-- wgetopt: Converted from Cygwin getopt file for wide characters
+            |   +-- LxBusServer: Send/Receive various types of messages with LxBus Server 
             |   |
-            |   |
+            |   |   +-- wgetopt: Converted from Cygwin getopt file for wide characters
+            |   |   |
             +-- WslReverse: Main function with option processing
 ```
 
@@ -61,6 +62,25 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 * [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
 * [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` placed separately from `LxssManager.DLL` file. 
 * [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade and uninstallation procedure. 
+
+## Take a long ride with :minibus:
+
+To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and LxBusClient as root user in WSL. Those two binaries sends and receives some massages between WSL and Windows side using LxBus via. LxCore driver. For detailed explanation, see Alex Ionescu's presentation [@34min](https://youtu.be/_p3RtkwstNk?t=2077). Here are some of them:
+
+| Step No. | LxBus Server (as Administrator)          | LxBus Client (as root)                |
+|:--------:|:----------------------------------------:|:-------------------------------------:|
+|  1       | Register LxBus server, wait for client   | Open lxss device, connect to server   |
+|  2       | Read message from LxBus client           | Write message to LxBus server         |
+|  3       | Write message to LxBus client            | Read message from LxBus server        |
+|  4       | Marshal W-end pipe, read from R-end pipe | Unmarshal W-end pipe, write message   |
+|  5       | Marshal R-end pipe, write to W-end pipe  | Unmarshal R-end pipe, read message    |
+|  6       | Unmarshal standard I/O file descriptors  | Marshal standard I/O file descriptors |
+|  7       | Unmarshal pid from client side           | Marshal current pid                   |
+|  8       | Marshal console message                  | Unmarshal console message             |
+|  9       | Create unnamed LxBus server              | To be continued ...                   |
+| 10       | Marshal fork token                       | Unmarshal fork token                  |
+
+There are many things that can be done with LxBus IPC mechanism. What interesting thing do you want to do with LxBus? :yum: 
 
 ## Trace Events
 

@@ -7,21 +7,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\LxBusServer.c" />
     <ClCompile Include="src\GetConhostServerId.c" />
     <ClCompile Include="src\CreateLxProcess.c" />
     <ClCompile Include="src\CreateProcessAsync.c" />
     <ClCompile Include="src\CreateWinProcess.c" />
     <ClCompile Include="src\Functions.c" />
+    <ClCompile Include="src\LxssDevice.c" />
     <ClCompile Include="src\wgetopt.c" />
     <ClCompile Include="src\WslReverse.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\LxBusServer.h" />
     <ClInclude Include="src\GetConhostServerId.h" />
     <ClInclude Include="src\CreateLxProcess.h" />
     <ClInclude Include="src\CreateProcessAsync.h" />
     <ClInclude Include="src\CreateWinProcess.h" />
     <ClInclude Include="src\Functions.h" />
     <ClInclude Include="src\LxBus.h" />
+    <ClInclude Include="src\LxssDevice.h" />
     <ClInclude Include="src\wgetopt.h" />
     <ClInclude Include="src\WinInternal.h" />
     <ClInclude Include="src\WslSession.h" />

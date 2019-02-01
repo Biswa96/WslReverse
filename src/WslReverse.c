@@ -1,6 +1,8 @@
+#include "LxssDevice.h"
 #include "WslSession.h"
 #include "Functions.h"
 #include "CreateLxProcess.h"
+#include "LxBusServer.h"
 #include "wgetopt.h"
 #include <stdio.h>
 
@@ -25,7 +27,10 @@ int main(void)
     PWslSession* wslSession = NULL;
 
     // Option table
+    const wchar_t* OptionString = L"b:d:e:Gg:hi:lr:S:s:t:u:x";
+
     const struct option OptionTable[] = {
+        { L"bus",           required_argument,   0,  'b' },
         { L"get-id",        required_argument,   0,  'd' },
         { L"export",        required_argument,   0,  'e' },
         { L"get-default",   no_argument,         0,  'G' },
@@ -38,6 +43,7 @@ int main(void)
         { L"set-config",    required_argument,   0,  's' },
         { L"terminate",     required_argument,   0,  't' },
         { L"uninstall",     required_argument,   0,  'u' },
+        { L"xpert",         no_argument,         0,  'x' },
         { 0,                no_argument,         0,   0  },
     };
 
@@ -49,7 +55,7 @@ int main(void)
         return 0;
 
     // Option parsing
-    while ((c = wgetopt_long(wargc, wargv, L"d:e:Gg:hi:lr:S:s:t:u:", OptionTable, 0)) != -1)
+    while ((c = wgetopt_long(wargc, wargv, OptionString, OptionTable, 0)) != -1)
     {
         switch (c)
         {
@@ -57,6 +63,17 @@ int main(void)
         {
             wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
             Usage();
+            break;
+        }
+        case 'b':
+        {
+            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            Log(hRes, L"GetDistributionId");
+            hRes = (*wslSession)->CreateInstance(wslSession, &DistroId, 0);
+            Log(hRes, L"CreateInstance");
+            if (hRes < 0)
+                return hRes;
+            hRes = LxBusServer(wslSession, &DistroId);
             break;
         }
         case 'd':
@@ -266,6 +283,11 @@ int main(void)
             Log(hRes, L"GetDistributionId");
             hRes = (*wslSession)->UnregisterDistribution(wslSession, &DistroId);
             Log(hRes, L"UnregisterDistribution");
+            break;
+        }
+        case 'x':
+        {
+            LxssDevice();
             break;
         }
         default:

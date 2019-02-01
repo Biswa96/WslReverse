@@ -3,7 +3,6 @@
 
 #include <Windows.h>
 
-// From DetoursNT/DetoursNT.h
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #endif
@@ -488,6 +487,15 @@ void TpPostWork(
 void TpReleaseWork(
     _Inout_ PTP_WORK Work);
 
+NTSTATUS RtlAcquirePrivilege(
+    _In_ PULONG Privilege,
+    _In_ ULONG NumPriv,
+    _In_ ULONG Flags,
+    _Out_ PULONG_PTR *ReturnedState);
+
+void RtlReleasePrivilege(
+    _In_ PULONG_PTR ReturnedState);
+
 PVOID RtlAllocateHeap(
     _In_ PVOID HeapHandle,
     _In_opt_ ULONG Flags,
@@ -503,7 +511,16 @@ NTSTATUS RtlInitializeCriticalSectionEx(
     _In_ DWORD dwSpinCount,
     _In_ DWORD Flags);
 
+void RtlInitUnicodeString(
+    _Out_ PUNICODE_STRING DestinationString,
+    _In_ PCWSTR SourceString);
+
 void RtlDeleteCriticalSection(
     _Inout_ LPCRITICAL_SECTION lpCriticalSection);
+
+#undef RtlZeroMemory
+void RtlZeroMemory(
+    _In_ PVOID Destination,
+    _In_ SIZE_T Length);
 
 #endif // WININTERNAL_H

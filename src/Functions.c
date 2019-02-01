@@ -1,41 +1,13 @@
 #include <Windows.h>
 #include <stdio.h>
 
-void Log(
-    unsigned long Result,
-    wchar_t* Function)
+void Log(long hResult, wchar_t* Function)
 {
-    wchar_t* MsgBuffer = NULL;
-    unsigned long tChars = FormatMessageW(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER |
-        FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        Result,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (wchar_t*)&MsgBuffer,
-        0,
-        NULL);
-
-    if (tChars)
-    {
-        wprintf(
-            L"[+] %ls Status: %ld\t %ls",
-            Function, (Result & 0xFFFF), MsgBuffer);
-    }
-    else
-    {
-        wprintf(
-            L"[+] %ls Status: %ld\n",
-            Function, (Result & 0xFFFF));
-    }
-
-
-    LocalFree(MsgBuffer);
+    wprintf(L"[+] Result %ld %ls\n",
+            (hResult & 0xFFFF), Function);
 }
 
-void Usage(
-    void)
+void Usage(void)
 {
     wprintf(
         L"\nWslReverse -- (c) Copyright 2018-19 Biswapriyo Nath\n"
@@ -43,6 +15,7 @@ void Usage(
         L"Use hidden COM interface of Windows Subsystem for Linux for fun\n"
         L"Usage: WslReverse.exe [-] [option] [argument]\n\n"
         L"Options:\n"
+        L"  -b, --bus          [distribution name]      Create own LxBus server.\n"
         L"  -d, --get-id       [distribution name]      Get distribution ID.\n"
         L"  -e, --export       [distribution name]      Exports selected distribution to a tar file.\n"
         L"  -G, --get-default                           Get default distribution ID.\n"
@@ -55,15 +28,12 @@ void Usage(
         L"  -s, --set-config   [distribution name]      Set configuration for distribution.\n"
         L"  -t, --terminate    [distribution name]      Terminate running distribution.\n"
         L"  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
-        L"\n"
-    );
+        L"\n");
 }
 
 #define GUID_STRING 40
 
-void PrintGuid(
-    GUID* id,
-    wchar_t* string)
+void PrintGuid(GUID* id, wchar_t* string)
 {
     _snwprintf_s(
         string,

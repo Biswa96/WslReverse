@@ -7,15 +7,8 @@
 #define GUID_STRING 40
 typedef struct _GUID GUID;
 
-void Log(
-    unsigned long Result,
-    wchar_t* Function);
-
-void PrintGuid(
-    GUID* id,
-    wchar_t* string);
-
-void Usage(
-    void);
+void Log(long hResult, wchar_t* Function);
+void Usage(void);
+void PrintGuid(GUID* id, wchar_t* string);
 
 #endif // FUNCTIONS_H
