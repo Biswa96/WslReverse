@@ -212,13 +212,13 @@ typedef union _LXBUS_IPC_MESSAGE_MARSHAL_VFSFILE_MSG {
 #define IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 46, METHOD_NEITHER, FILE_ANY_ACCESS) 
 
-typedef union _LXBUS_IPC_VFS_HANDLE {
+typedef union _LXBUS_IPC_VFS_HANDLE_DATA {
     struct {
         unsigned int Handle;
         LXBUS_IPC_CONNECTION_MARSHAL_HANDLE_TYPE Type;
     };
     unsigned long long HandleIdCount;
-} LXBUS_IPC_VFS_HANDLE, *PLXBUS_IPC_VFS_HANDLE;
+} LXBUS_IPC_VFS_HANDLE_DATA, *PLXBUS_IPC_VFS_HANDLE_DATA;
 
 #define TOTAL_IO_HANDLES 3
 
@@ -226,7 +226,7 @@ typedef union _LXBUS_IPC_VFS_HANDLE {
 typedef struct _LXSS_MESSAGE_PORT_RECEIVE_OBJECT {
     unsigned int NumberOfBytesToRead;
     unsigned int BufferSize;
-    LXBUS_IPC_VFS_HANDLE VfsHandle[TOTAL_IO_HANDLES];
+    LXBUS_IPC_VFS_HANDLE_DATA VfsMsg[TOTAL_IO_HANDLES];
     char Unknown[32];
     unsigned int WinApplicationPathOffset;
     unsigned int WinCurrentPathOffset;
@@ -267,6 +267,18 @@ typedef struct _LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE {
     unsigned short WindowHeight;
     unsigned short WindowWidth;
 } LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE, *PLXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE;
+
+typedef struct _LX_CREATE_PROCESS_RESULT {
+    struct {
+        void* hProcess;
+        void* hThread;
+        unsigned int dwProcessId;
+        unsigned int dwThreadId;
+    } ProcInfo;
+    unsigned int LastError;
+    unsigned char IsSubsystemGUI;
+    void* hpCon;
+} LX_CREATE_PROCESS_RESULT, *PLX_CREATE_PROCESS_RESULT;
 
 /*
 * 0x2200BFu

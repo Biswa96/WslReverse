@@ -12,12 +12,12 @@ Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Vi
 
 ## How to use
 
-This project only shows the hidden COM methods which may change in future Windows version. The current COM vtable, used in this project, is according to latest Windows 10 19H1 Insider version. Here are the options of WslReverse: 
+Download the binary from [Release page](https://github.com/Biswa96/WslReverse/releases), no installation steps require. This project only shows the hidden COM methods which may change in future Windows version. The COM vtable, used in this project, is according to _latest Windows 10 19H1 Insider Preview_. Here are the options of WslReverse: 
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
 Options:
-    -b, --bus          [distribution name]      Create own LxBus server.
+    -b, --bus          [distribution name]      Create own LxBus server (as administrator).
     -d, --get-id       [distribution name]      Get distribution GUID.
     -e, --export       [distribution name]      Exports selected distribution to a tar file.
     -G, --get-default                           Get default distribution GUID.
@@ -44,7 +44,7 @@ src\
     +-- CreateWinProcess: Create Windows process with LxBus server
     +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
         |
-        |   +-- Functions: Helping functions to log functions return values
+        |   +-- Log: Helping functions to log functions return values
         |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
         |   +-- WslSession: LxssUserSession COM interface
         |   |
@@ -65,7 +65,7 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 
 ## Take a long ride with :minibus:
 
-To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and LxBusClient as root user in WSL. Those two binaries sends and receives some massages between WSL and Windows side using LxBus via. LxCore driver. For detailed explanation, see Alex Ionescu's presentation [@34min](https://youtu.be/_p3RtkwstNk?t=2077). Here are some of them:
+To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and LxBusClient as root user in WSL. Those two binaries exchange some messages between WSL and Windows side using LxBus via. LxCore driver. Here are some of them:
 
 | Step No. | LxBus Server (as Administrator)          | LxBus Client (as root)                |
 |:--------:|:----------------------------------------:|:-------------------------------------:|
@@ -80,7 +80,7 @@ To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, r
 |  9       | Create unnamed LxBus server              | To be continued ...                   |
 | 10       | Marshal fork token                       | Unmarshal fork token                  |
 
-There are many things that can be done with LxBus IPC mechanism. What interesting thing do you want to do with LxBus? :yum: 
+For detailed explanation, see Alex Ionescu's presentation [@34min](https://youtu.be/36Ykla27FIo?t=2077) at BlackHat USA 2016. There are many things that can be done with LxBus IPC mechanism. What interesting thing do you want to do with LxBus? :yum: 
 
 ## Trace Events
 

@@ -71,7 +71,7 @@ struct _WslSession
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
         _In_ PWslSession* wslSession,
         _In_opt_ GUID* DistroId,
-        _In_opt_ ULONG InstanceMode);
+        _In_opt_ ULONG InitializeFlag);
 
     /**
     * PVOID ObjectStublessClient4;

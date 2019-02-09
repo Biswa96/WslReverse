@@ -1,10 +1,16 @@
-#include <Windows.h>
+#include "WinInternal.h"
 #include <stdio.h>
 
-void Log(long hResult, wchar_t* Function)
+void LogResult(long hResult, wchar_t* Function)
 {
-    wprintf(L"[+] Result %ld %ls\n",
-            (hResult & 0xFFFF), Function);
+    if(hResult < 0)
+        wprintf(L"[-] ERROR %ld %ls\n", (hResult & 0xFFFF), Function);
+}
+
+void LogStatus(long Status, wchar_t* Function)
+{
+    if(Status < 0)
+        wprintf(L"[-] NTSTATUS 0x%08lX %ls\n", Status, Function);
 }
 
 void Usage(void)
@@ -15,7 +21,7 @@ void Usage(void)
         L"Use hidden COM interface of Windows Subsystem for Linux for fun\n"
         L"Usage: WslReverse.exe [-] [option] [argument]\n\n"
         L"Options:\n"
-        L"  -b, --bus          [distribution name]      Create own LxBus server.\n"
+        L"  -b, --bus          [distribution name]      Create own LxBus server (as administrator).\n"
         L"  -d, --get-id       [distribution name]      Get distribution ID.\n"
         L"  -e, --export       [distribution name]      Exports selected distribution to a tar file.\n"
         L"  -G, --get-default                           Get default distribution ID.\n"

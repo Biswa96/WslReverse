@@ -13,7 +13,7 @@ set LFLAGS=/nologo /MACHINE:X64
 set LIBS=Ole32.lib Shell32.lib NtDll.lib
 
 ::Disable warnings
-set CCOPT=/wd"4201" /wd"4204" /wd"4214"
+set CCOPT=/wd"4201" /wd"4214"
 
 ::Build
 rd /s /q %BINDIR%

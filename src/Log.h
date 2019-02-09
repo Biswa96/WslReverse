@@ -1,5 +1,5 @@
-#ifndef FUNCTIONS_H
-#define FUNCTIONS_H
+#ifndef LOG_H
+#define LOG_H
 
 #include <wchar.h>
 
@@ -7,8 +7,10 @@
 #define GUID_STRING 40
 typedef struct _GUID GUID;
 
-void Log(long hResult, wchar_t* Function);
+void LogResult(long hResult, wchar_t* Function);
+void LogStatus(long Status, wchar_t* Function);
+
 void Usage(void);
 void PrintGuid(GUID* id, wchar_t* string);
 
-#endif // FUNCTIONS_H
+#endif // LOG_H

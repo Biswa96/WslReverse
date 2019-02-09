@@ -12,7 +12,7 @@
     <ClCompile Include="src\CreateLxProcess.c" />
     <ClCompile Include="src\CreateProcessAsync.c" />
     <ClCompile Include="src\CreateWinProcess.c" />
-    <ClCompile Include="src\Functions.c" />
+    <ClCompile Include="src\Log.c" />
     <ClCompile Include="src\LxssDevice.c" />
     <ClCompile Include="src\wgetopt.c" />
     <ClCompile Include="src\WslReverse.c" />
@@ -23,7 +23,7 @@
     <ClInclude Include="src\CreateLxProcess.h" />
     <ClInclude Include="src\CreateProcessAsync.h" />
     <ClInclude Include="src\CreateWinProcess.h" />
-    <ClInclude Include="src\Functions.h" />
+    <ClInclude Include="src\Log.h" />
     <ClInclude Include="src\LxBus.h" />
     <ClInclude Include="src\LxssDevice.h" />
     <ClInclude Include="src\wgetopt.h" />
@@ -42,6 +42,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
@@ -60,7 +61,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <DisableSpecificWarnings>4201;4204;4214</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
