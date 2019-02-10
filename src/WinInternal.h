@@ -113,6 +113,9 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
     ULONG ProcessGroupId;
     ULONG LoaderThreads;
     UNICODE_STRING RedirectionDllName;
+    UNICODE_STRING HeapPartitionName;
+    PVOID DefaultThreadpoolCpuSetMasks;
+    ULONG DefaultThreadpoolCpuSetMaskCount;
 } RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
 typedef struct _ACTIVATION_CONTEXT_DATA {

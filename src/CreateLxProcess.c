@@ -6,6 +6,71 @@
 #include "LxBus.h" // For IOCTLs values
 #include <stdio.h>
 
+#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
+#define ENABLE_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
+#define ENABLE_OUTPUT_MODE (DISABLE_NEWLINE_AUTO_RETURN | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)
+
+typedef struct _SvcCommIo {
+    HANDLE hIn;
+    HANDLE hOut;
+    HANDLE hErr;
+    ULONG InMode;
+    ULONG OutMode;
+    ULONG ErrMode;
+} SvcCommIo, *PSvcCommIo;
+
+void
+ConfigureStdHandles(PLXSS_STD_HANDLES StdHandles,
+                    PSvcCommIo CommIo)
+{
+    // Set pipe handles if standard I/O handles are redirected
+    StdHandles->StdIn.Handle = ToULong(CommIo->hIn);
+    StdHandles->StdIn.Pipe = LxInputPipeType;
+    StdHandles->StdOut.Handle = ToULong(CommIo->hOut);
+    StdHandles->StdOut.Pipe = LxOutputPipeType;
+    StdHandles->StdErr.Handle = ToULong(CommIo->hOut);
+    StdHandles->StdErr.Pipe = LxOutputPipeType;
+
+    if (GetFileType(CommIo->hIn) == FILE_TYPE_CHAR &&
+        GetConsoleMode(CommIo->hIn, &CommIo->InMode))
+    {
+        // Switch to VT-100 Input Console
+        ULONG NewMode = (CommIo->InMode & (~DISABLED_INPUT_MODE)) | ENABLE_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
+        SetConsoleMode(CommIo->hIn, NewMode);
+
+        // Switch input to UTF-8
+        SetConsoleCP(CP_UTF8);
+
+        StdHandles->StdIn.Handle = 0;
+        StdHandles->StdIn.Pipe = 0;
+    }
+
+    if (GetFileType(CommIo->hOut) == FILE_TYPE_CHAR &&
+        GetConsoleMode(CommIo->hOut, &CommIo->OutMode))
+    {
+        // Switch to VT-100 Output Console
+        ULONG NewMode = (CommIo->OutMode | ENABLE_OUTPUT_MODE); // 0xD
+        SetConsoleMode(CommIo->hOut, NewMode);
+
+        // Switch output to UTF-8
+        SetConsoleOutputCP(CP_UTF8);
+
+        StdHandles->StdOut.Handle = 0;
+        StdHandles->StdOut.Pipe = 0;
+    }
+
+    if (GetFileType(CommIo->hErr) == FILE_TYPE_CHAR &&
+        GetConsoleMode(CommIo->hErr, &CommIo->ErrMode))
+    {
+        // Switch to VT-100 Output Console
+        ULONG NewMode = (CommIo->ErrMode | ENABLE_OUTPUT_MODE); // 0xD
+        SetConsoleMode(CommIo->hErr, NewMode);
+
+        StdHandles->StdErr.Handle = 0;
+        StdHandles->StdErr.Pipe = 0;
+    }
+}
+
 void
 CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
                     HANDLE ServerHandle,
@@ -108,7 +173,7 @@ InitializeInterop(HANDLE ServerHandle,
     AttrbList = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, AttrbSize);
     bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
 
-    if(AttrbList)
+    if (AttrbList)
     {
         HANDLE Value[3] = { NULL };
         Value[0] = ServerHandle;
@@ -191,10 +256,6 @@ InitializeInterop(HANDLE ServerHandle,
     return bRes;
 }
 
-#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
-#define ENABLE_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
-#define ENABLE_OUTPUT_MODE (DISABLE_NEWLINE_AUTO_RETURN | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)
-
 HRESULT
 CreateLxProcess(PWslSession* wslSession,
                 GUID* DistroID,
@@ -204,14 +265,10 @@ CreateLxProcess(PWslSession* wslSession,
                 wchar_t* LxssUserName)
 {
     HRESULT hRes;
-    ULONG InputMode = 0, OutputMode = 0;
     HANDLE ProcessHandle = NULL, ServerHandle = NULL;
     GUID InitiatedDistroID, LxInstanceID;
     PVOID socket = NULL;
     HANDLE HeapHandle = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap;
-
-    // LxssManager sets Standard Handles automatically
-    LXSS_STD_HANDLES StdHandles = { 0 };
 
     // Console Window handle of current process (if any)
     PRTL_USER_PROCESS_PARAMETERS ProcParam = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters;
@@ -220,53 +277,31 @@ CreateLxProcess(PWslSession* wslSession,
             L" ConhostServerId: %lld \n\t ConsoleHandle: 0x%p\n",
             GetConhostServerId(ConsoleHandle), ConsoleHandle);
 
-    // Preapare environments
+    // Configure standard handles
+    LXSS_STD_HANDLES StdHandles;
+    RtlZeroMemory(&StdHandles, sizeof StdHandles);
+
+    SvcCommIo CommIo;
+    RtlZeroMemory(&CommIo, sizeof CommIo);
+
+    CommIo.hIn = ProcParam->StandardInput;
+    CommIo.hOut = ProcParam->StandardOutput;
+    CommIo.hErr = ProcParam->StandardError;
+    ConfigureStdHandles(&StdHandles, &CommIo);
+
+    // Prepare environments
     ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
     PWSTR PathVariable = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, nSize * sizeof(wchar_t));
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
-
-    // Configure Console Handles
-    HANDLE hIn = ProcParam->StandardInput;
-    HANDLE hOut = ProcParam->StandardOutput;
-
-    if (GetFileType(hIn) == FILE_TYPE_CHAR && GetConsoleMode(hIn, &InputMode))
-    {
-        // Switch to VT-100 Input Console
-        ULONG NewMode = (InputMode & (~DISABLED_INPUT_MODE)) | ENABLE_INPUT_MODE; // & 0xFFFFFFD8 | 0x208
-        SetConsoleMode(hIn, NewMode);
-
-        // Switch input to UTF-8
-        SetConsoleCP(CP_UTF8);
-    }
-
-    if (GetConsoleMode(hOut, &OutputMode))
-    {
-        // Switch to VT-100 Output Console
-        ULONG NewMode = (OutputMode | ENABLE_OUTPUT_MODE); // 0xD
-        SetConsoleMode(hOut, NewMode);
-
-        // Switch output to UTF-8
-        SetConsoleOutputCP(CP_UTF8);
-    }
 
     // Set console size from screen buffer co-ordinates
     COORD WindowSize;
     CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer = { 0 };
     ConBuffer.cbSize = sizeof ConBuffer;
 
-    GetConsoleScreenBufferInfoEx(hOut, &ConBuffer);
+    GetConsoleScreenBufferInfoEx(CommIo.hOut, &ConBuffer);
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
-
-#if 0
-    // Fun with Lxss handles
-    StdHandles.StdIn.Handle = HandleToULong(hIn);
-    StdHandles.StdIn.Pipe = 1;
-    StdHandles.StdOut.Handle = HandleToULong(hOut);
-    StdHandles.StdOut.Pipe = 2;
-    StdHandles.StdErr.Handle = HandleToULong(hOut);
-    StdHandles.StdErr.Pipe = 2;
-#endif
 
     hRes = (*wslSession)->CreateLxProcess(
         wslSession,
@@ -333,12 +368,13 @@ CreateLxProcess(PWslSession* wslSession,
                 LogStatus(Status, L"ZwDeviceIoControlFile");
         }
     }
-    else 
+    else
         LogResult(hRes, L"CreateLxProcess");
 
     // Restore Console mode to previous state
-    SetConsoleMode(hIn, InputMode);
-    SetConsoleMode(hOut, OutputMode);
+    SetConsoleMode(CommIo.hIn, CommIo.InMode);
+    SetConsoleMode(CommIo.hOut, CommIo.OutMode);
+    SetConsoleMode(CommIo.hErr, CommIo.ErrMode);
 
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, PathVariable);
