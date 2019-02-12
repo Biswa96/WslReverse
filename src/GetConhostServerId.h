@@ -1,7 +1,8 @@
 #ifndef GETCONHOSTSERVERID_H
 #define GETCONHOSTSERVERID_H
 
-unsigned long long
-GetConhostServerId(void* ConsoleHandle);
+ULONGLONG
+WINAPI
+GetConhostServerId(HANDLE ConsoleHandle);
 
 #endif // GETCONHOSTSERVERID_H

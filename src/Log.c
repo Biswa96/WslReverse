@@ -1,19 +1,25 @@
 #include "WinInternal.h"
 #include <stdio.h>
 
-void LogResult(long hResult, wchar_t* Function)
+void
+WINAPI
+LogResult(HRESULT hResult, PWSTR Function)
 {
     if(hResult < 0)
         wprintf(L"[-] ERROR %ld %ls\n", (hResult & 0xFFFF), Function);
 }
 
-void LogStatus(long Status, wchar_t* Function)
+void
+WINAPI
+LogStatus(NTSTATUS Status, PWSTR Function)
 {
     if(Status < 0)
         wprintf(L"[-] NTSTATUS 0x%08lX %ls\n", Status, Function);
 }
 
-void Usage(void)
+void
+WINAPI
+Usage(void)
 {
     wprintf(
         L"\nWslReverse -- (c) Copyright 2018-19 Biswapriyo Nath\n"
@@ -39,7 +45,9 @@ void Usage(void)
 
 #define GUID_STRING 40
 
-void PrintGuid(GUID* id, wchar_t* string)
+void
+WINAPI
+PrintGuid(GUID* id, PWSTR string)
 {
     _snwprintf_s(
         string,

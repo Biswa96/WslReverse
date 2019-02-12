@@ -1,9 +1,9 @@
-#include "GetConhostServerId.h"
+#include "WinInternal.h"
 #include "CreateProcessAsync.h"
+#include "GetConhostServerId.h"
 #include "Log.h"
 #include "WslSession.h"
-#include "WinInternal.h" // PEB and some defined expression
-#include "LxBus.h" // For IOCTLs values
+#include "LxBus.h"
 #include <stdio.h>
 
 #define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
@@ -20,6 +20,7 @@ typedef struct _SvcCommIo {
 } SvcCommIo, *PSvcCommIo;
 
 void
+WINAPI
 ConfigureStdHandles(PLXSS_STD_HANDLES StdHandles,
                     PSvcCommIo CommIo)
 {
@@ -72,6 +73,7 @@ ConfigureStdHandles(PLXSS_STD_HANDLES StdHandles,
 }
 
 void
+WINAPI
 CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
                     HANDLE ServerHandle,
                     PTP_WORK Work)
@@ -118,6 +120,7 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
 }
 
 BOOL
+WINAPI
 InitializeInterop(HANDLE ServerHandle,
                   GUID* CurrentDistroID,
                   GUID* LxInstanceID)
@@ -192,19 +195,18 @@ InitializeInterop(HANDLE ServerHandle,
     // Create required string for CreateProcessW
     ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
 
-    _snwprintf_s(
-        CommandLine,
-        MAX_PATH,
-        MAX_PATH,
-        L"%ls {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X} %ld %ld %ld",
-        WslHost,
-        CurrentDistroID->Data1, CurrentDistroID->Data2, CurrentDistroID->Data3,
-        CurrentDistroID->Data4[0], CurrentDistroID->Data4[1], CurrentDistroID->Data4[2],
-        CurrentDistroID->Data4[3], CurrentDistroID->Data4[4], CurrentDistroID->Data4[5],
-        CurrentDistroID->Data4[6], CurrentDistroID->Data4[7],
-        ToULong(ServerHandle),
-        ToULong(EventHandle),
-        ToULong(ProcHandle));
+    _snwprintf_s(CommandLine,
+                 MAX_PATH,
+                 MAX_PATH,
+                 L"%ls {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X} %ld %ld %ld",
+                 WslHost,
+                 CurrentDistroID->Data1, CurrentDistroID->Data2, CurrentDistroID->Data3,
+                 CurrentDistroID->Data4[0], CurrentDistroID->Data4[1], CurrentDistroID->Data4[2],
+                 CurrentDistroID->Data4[3], CurrentDistroID->Data4[4], CurrentDistroID->Data4[5],
+                 CurrentDistroID->Data4[6], CurrentDistroID->Data4[7],
+                 ToULong(ServerHandle),
+                 ToULong(EventHandle),
+                 ToULong(ProcHandle));
 
     PROCESS_INFORMATION ProcInfo;
     STARTUPINFOEXW SInfoEx = { 0 };
@@ -257,12 +259,13 @@ InitializeInterop(HANDLE ServerHandle,
 }
 
 HRESULT
+WINAPI
 CreateLxProcess(PWslSession* wslSession,
                 GUID* DistroID,
-                char* CommandLine,
-                char** Arguments,
-                int ArgumentCount,
-                wchar_t* LxssUserName)
+                PSTR CommandLine,
+                PSTR* Arguments,
+                ULONG ArgumentCount,
+                PWSTR LxssUserName)
 {
     HRESULT hRes;
     HANDLE ProcessHandle = NULL, ServerHandle = NULL;
@@ -274,7 +277,7 @@ CreateLxProcess(PWslSession* wslSession,
     PRTL_USER_PROCESS_PARAMETERS ProcParam = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters;
     HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
     wprintf(L"[+] ConHost: \n\t"
-            L" ConhostServerId: %lld \n\t ConsoleHandle: 0x%p\n",
+            L" ConhostServerId: %llu \n\t ConsoleHandle: 0x%p\n",
             GetConhostServerId(ConsoleHandle), ConsoleHandle);
 
     // Configure standard handles

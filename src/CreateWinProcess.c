@@ -10,6 +10,7 @@ typedef struct _X_HPCON {
 } X_HPCON, *PX_HPCON;
 
 BOOL
+WINAPI
 CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
                  PLX_CREATE_PROCESS_RESULT ProcResult)
 {

@@ -7,7 +7,9 @@
 #include "wgetopt.h"
 #include <stdio.h>
 
-int main(void)
+int
+WINAPI
+main(void)
 {
     int wargc;
     PWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);

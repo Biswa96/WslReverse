@@ -8,12 +8,13 @@
 #define IOCTL_CDP_FAST_CONNECTION \
     CTL_CODE(FILE_DEVICE_CONSOLE, 0x08, METHOD_NEITHER, FILE_ANY_ACCESS) //0x500023u
 
-unsigned long long
-GetConhostServerId(void* ConsoleHandle)
+ULONGLONG
+WINAPI
+GetConhostServerId(HANDLE ConsoleHandle)
 {
     IO_STATUS_BLOCK IoStatusBlock;
     FILE_FS_DEVICE_INFORMATION FsInformation;
-    unsigned long long ConHostPid = 0;
+    ULONGLONG ConHostPid = 0;
     NTSTATUS Status;
 
     Status = ZwQueryVolumeInformationFile(ConsoleHandle,
@@ -32,7 +33,7 @@ GetConhostServerId(void* ConsoleHandle)
                                        &IoStatusBlock,
                                        IOCTL_CDP_FAST_CONNECTION,
                                        NULL, 0,
-                                       &ConHostPid, sizeof(ConHostPid));
+                                       &ConHostPid, sizeof ConHostPid);
 
         if (NT_SUCCESS(Status))
             return ConHostPid;

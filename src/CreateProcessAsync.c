@@ -1,10 +1,11 @@
-#include "CreateWinProcess.h"
 #include "WinInternal.h"
-#include "Log.h"
 #include "LxBus.h"
+#include "CreateWinProcess.h"
+#include "Log.h"
 #include <stdio.h>
 
 NTSTATUS
+WINAPI
 WaitForMessage(HANDLE ClientHandle,
                HANDLE EventHandle,
                PIO_STATUS_BLOCK IoStatusBlock)
@@ -25,6 +26,7 @@ WaitForMessage(HANDLE ClientHandle,
 }
 
 NTSTATUS
+WINAPI
 OpenAnonymousPipe(PHANDLE ReadPipeHandle,
                   PHANDLE WritePipeHandle)
 {
@@ -86,7 +88,8 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
     return Status;
 }
 
-ULONG 
+ULONG
+WINAPI
 ProcessInteropMessages(HANDLE ReadPipeHandle,
                        PLX_CREATE_PROCESS_RESULT ProcResult)
 {
@@ -148,6 +151,7 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
 }
 
 void
+WINAPI
 CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                    HANDLE ClientHandle,
                    PTP_WORK Work)
@@ -245,6 +249,8 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     // Create Windows process using unmarshalled VFS handles
     LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
     bRes = CreateWinProcess(LxReceiveMsg, &ProcResult);
+    if(!bRes)
+        wprintf(L"Can't create Win32 process...\n");
 
     // Create pipes to get console resize message
     HANDLE ReadPipeHandle = NULL, WritePipeHandle = NULL;

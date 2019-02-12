@@ -1,7 +1,7 @@
+#include "WinInternal.h"
 #include "CreateProcessAsync.h"
 #include "Log.h"
 #include "WslSession.h"
-#include "WinInternal.h"
 #include "LxBus.h"
 #include <stdio.h>
 
@@ -18,8 +18,9 @@ typedef struct _PipePair {
 } PipePair;
 
 HRESULT
+WINAPI
 LxBusServer(PWslSession* wslSession,
-                    GUID* DistroID)
+            GUID* DistroID)
 {
     HRESULT hRes;
     NTSTATUS Status;
