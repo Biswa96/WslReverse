@@ -75,7 +75,7 @@ To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, r
 |  4       | Marshal W-end pipe, read from R-end pipe | Unmarshal W-end pipe, write message   |
 |  5       | Marshal R-end pipe, write to W-end pipe  | Unmarshal R-end pipe, read message    |
 |  6       | Unmarshal standard I/O file descriptors  | Marshal standard I/O file descriptors |
-|  7       | Unmarshal pid from client side           | Marshal current pid                   |
+|  7       | Unmarshal and get PID from client side   | Marshal current PID                   |
 |  8       | Marshal console message                  | Unmarshal console message             |
 |  9       | Create unnamed LxBus server              | To be continued ...                   |
 | 10       | Marshal fork token                       | Unmarshal fork token                  |

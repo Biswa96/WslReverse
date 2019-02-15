@@ -332,21 +332,35 @@ CreateLxProcess(PWslSession* wslSession,
 
     if (SUCCEEDED(hRes))
     {
+        NTSTATUS Status;
+        IO_STATUS_BLOCK IoStatusBlock;
+
         wchar_t u_LxInstanceID[GUID_STRING];
         wchar_t u_InitiatedDistroID[GUID_STRING];
 
         PrintGuid(&LxInstanceID, u_LxInstanceID);
         PrintGuid(&InitiatedDistroID, u_InitiatedDistroID);
 
-        wprintf(L"[+] CreateLxProcess: \n\t ProcessHandle: 0x%p \n\t ServerHandle: 0x%p \n\t"
+        // Get NT side Process ID of CommandLine process
+        LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
+
+        Status = ZwDeviceIoControlFile(ProcessHandle,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       &IoStatusBlock,
+                                       IOCTL_LXBUS_LX_PROCESS_HANDLE_GET_NT_PID,
+                                       NULL, 0,
+                                       &LxProcMsg, sizeof LxProcMsg);
+
+        wprintf(L"[+] CreateLxProcess: \n\t"
+                L" NtPid: %u \n\t LxProcessHandle: 0x%p \n\t ServerHandle: 0x%p \n\t"
                 L" LxInstanceID: %ls \n\t InitiatedDistroID: %ls\n",
-                ProcessHandle, ServerHandle,
+                LxProcMsg.NtPid, ProcessHandle, ServerHandle,
                 u_LxInstanceID, u_InitiatedDistroID);
 
         if (SetHandleInformation(ProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
-            NTSTATUS Status;
-            IO_STATUS_BLOCK IoStatusBlock;
             LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
             WaitForSignalMsg.TimeOut = INFINITE;
 

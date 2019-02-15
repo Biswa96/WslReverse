@@ -315,6 +315,22 @@ LxBusServer(PWslSession* wslSession,
     else
         LogStatus(Status, L"ZwDeviceIoControlFile");
 
+    // Get NT side Process ID of LxBus client process
+    LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
+
+    Status = ZwDeviceIoControlFile(ProcessMsg.ProcessHandle,
+                                   NULL,
+                                   NULL,
+                                   NULL,
+                                   &IoStatusBlock,
+                                   IOCTL_LXBUS_LX_PROCESS_HANDLE_GET_NT_PID,
+                                   NULL, 0,
+                                   &LxProcMsg, sizeof LxProcMsg);
+    if (NT_SUCCESS(Status))
+        wprintf(L"LxProcMsg.NtPid: %u\n", LxProcMsg.NtPid);
+    else
+        LogStatus(Status, L"ZwDeviceIoControlFile");
+
 
     //
     // 8# Create a session leader from any process handle
