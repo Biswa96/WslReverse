@@ -17,9 +17,11 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     BOOL bRes;
     NTSTATUS Status;
     SIZE_T AttrSize = 0;
-    STARTUPINFOEXW SInfoEx = { 0 };
-    PROCESS_BASIC_INFORMATION BasicInfo = { 0 };
-    HANDLE HeapHandle = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap;
+    STARTUPINFOEXW SInfoEx;
+    RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
+
+    PROCESS_BASIC_INFORMATION BasicInfo;
+    HANDLE HeapHandle = RtlGetProcessHeap();
     LPPROC_THREAD_ATTRIBUTE_LIST AttrList = NULL;
 
     bRes = InitializeProcThreadAttributeList(NULL, 1, 0, &AttrSize);
@@ -46,6 +48,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
         LogResult(hRes, L"CreatePseudoConsole");
 
         // Cast hpCon to a internal structure for ConHost PID
+        RtlZeroMemory(&BasicInfo, sizeof BasicInfo);
         Status = ZwQueryInformationProcess(((PX_HPCON)hpCon)->hConHostProcess,
                                            ProcessBasicInformation,
                                            &BasicInfo,
@@ -122,7 +125,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
                 ProcResult->ProcInfo.hProcess, ProcResult->ProcInfo.hThread);
     }
     else
-        LogResult(GetLastError(), L"CreateWinProcess");
+        LogResult(RtlGetLastWin32Error(), L"CreateWinProcess");
 
     Status = ZwQueryInformationProcess(ProcResult->ProcInfo.hProcess,
                                        ProcessBasicInformation,

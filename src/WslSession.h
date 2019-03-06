@@ -20,13 +20,15 @@ typedef enum _WslDefaultUID {
     NormalUser = 1000
 } WslDefaultUID;
 
-typedef enum _LxssDistributionState {
+typedef enum _WSL_DISTRIBUTION_STATES {
+    DistroStateAll = 0,
     Installed = 1,          // LxssUserSession::_SetDistributionInstalled
     ToBeInstall = 2,        // LxssUserSession::_RegisterDistributionCommon
+    DistroStateRunning = 2,
     Installing = 3,         // LxssUserSession::_CreateDistributionRegistration
     Uninstalling = 4,       // LxssUserSession::UnregisterDistribution
     Upgrading = 5           // LxssUserSession::BeginUpgradeDistribution
-} LxssDistributionState;
+} WSL_DISTRIBUTION_STATES;
 
 typedef enum _WSL_DISTRIBUTION_FLAGS {
     WSL_DISTRIBUTION_FLAGS_NONE = 0,
@@ -107,7 +109,7 @@ struct _WslSession
     HRESULT(STDMETHODCALLTYPE *GetDistributionId)(
         _In_ PWslSession* wslSession,
         _In_ PWSTR DistroName,
-        _In_ ULONG State,
+        _In_ WSL_DISTRIBUTION_STATES DistroState,
         _Out_ GUID* DistroId);
 
     /**
@@ -184,7 +186,7 @@ struct _WslSession
     **/
     HRESULT(STDMETHODCALLTYPE *EnumerateDistributions)(
         _In_ PWslSession* wslSession,
-        _In_ BOOLEAN WithThrow,
+        _In_ WSL_DISTRIBUTION_STATES DistroState,
         _Out_ PULONG DistroCount,
         _Out_ GUID** DistroIdList);
 
@@ -209,7 +211,7 @@ struct _WslSession
         _In_ PLXSS_STD_HANDLES StdHandles,
         _Out_ GUID* InitiatedDistroId,
         _Out_ GUID* LxInstanceId,
-        _Out_ PHANDLE ProcessHandle,
+        _Out_ PHANDLE LxProcessHandle,
         _Out_ PHANDLE ServerHandle,
         _In_ PVOID VmModeSocketA,
         _In_ PVOID VmModeSocketB,

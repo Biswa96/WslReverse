@@ -52,17 +52,17 @@ int main(void)
     //
     bytes = write(ConnectMsg.ServerHandle,
                   MESSAGE_TO_SEND,
-                  sizeof(MESSAGE_TO_SEND));
+                  sizeof MESSAGE_TO_SEND);
     Log(bytes, "write");
 
 
     //
     // 3# Read message from LxBus server
     //
-    memset(Buffer, 0, sizeof(Buffer));
+    memset(Buffer, 0, sizeof Buffer);
     bytes = read(ConnectMsg.ServerHandle,
                  Buffer,
-                 sizeof(Buffer));
+                 sizeof Buffer);
     Log(bytes, "read");
     printf("\nMessage from server:\n%s", Buffer);
 
@@ -74,7 +74,7 @@ int main(void)
 
     bytes = read(ConnectMsg.ServerHandle,
                  &HandleMsgA.HandleIdCount,
-                 sizeof(HandleMsgA.HandleIdCount));
+                 sizeof HandleMsgA.HandleIdCount);
     Log(bytes, "read");
     printf("HandleMsgA.HandleIdCount: %lld\n", HandleMsgA.HandleIdCount);
 
@@ -88,7 +88,7 @@ int main(void)
     // Write message to pipe handle
     bytes = write(HandleMsgA.Handle,
                   MESSAGE_TO_SEND,
-                  sizeof(MESSAGE_TO_SEND));
+                  sizeof MESSAGE_TO_SEND);
     Log(bytes, "write");
 
 
@@ -99,7 +99,7 @@ int main(void)
 
     bytes = read(ConnectMsg.ServerHandle,
                  &HandleMsgB.HandleIdCount,
-                 sizeof(HandleMsgB.HandleIdCount));
+                 sizeof HandleMsgB.HandleIdCount);
     Log(bytes, "read");
     printf("HandleMsgB.HandleIdCount: %lld\n", HandleMsgB.HandleIdCount);
 
@@ -111,10 +111,10 @@ int main(void)
     printf("PipeFd: %d\n", HandleMsgB.Handle);
 
     // Read message from pipe handle
-    memset(Buffer, 0, sizeof(Buffer));
+    memset(Buffer, 0, sizeof Buffer);
     bytes = read(HandleMsgB.Handle,
                  Buffer,
-                 sizeof(Buffer));
+                 sizeof Buffer);
     Log(bytes, "read");
     printf("\nMessage from pipe:\n%s", Buffer);
 
@@ -139,7 +139,7 @@ int main(void)
         // Write HandleIdCount so that LxBus server can unmarshal it
         bytes = write(ConnectMsg.ServerHandle,
                       &VfsMsg.HandleIdCount,
-                      sizeof(VfsMsg.HandleIdCount));
+                      sizeof VfsMsg.HandleIdCount);
         Log(bytes, "write");
 
         // Swap
@@ -163,7 +163,7 @@ int main(void)
     // Write ProcessIdCount so that LxBus server can unmarshal it
     bytes = write(ConnectMsg.ServerHandle,
                   &ProcessMsg.ProcessIdCount,
-                  sizeof(ProcessMsg.ProcessIdCount));
+                  sizeof ProcessMsg.ProcessIdCount);
     Log(bytes, "write");
 
 
@@ -175,7 +175,7 @@ int main(void)
     // Read ConsoleIdCount from server side
     bytes = read(ConnectMsg.ServerHandle,
                  &ConsoleMsg.ConsoleIdCount,
-                 sizeof(ConsoleMsg.ConsoleIdCount));
+                 sizeof ConsoleMsg.ConsoleIdCount);
     Log(bytes, "read");
     printf("ConsoleMsg.ConsoleIdCount: %lld\n", ConsoleMsg.ConsoleIdCount);
 
@@ -196,7 +196,7 @@ int main(void)
     // Read ServerPortIdCount from server side
     bytes = read(ConnectMsg.ServerHandle,
                  &UnnamedServerMsg.ServerPortIdCount,
-                 sizeof(UnnamedServerMsg.ServerPortIdCount));
+                 sizeof UnnamedServerMsg.ServerPortIdCount);
     Log(bytes, "read");
     printf("UnnamedServerMsg.ServerPortIdCount: %lld\n", UnnamedServerMsg.ServerPortIdCount);
     // To be continued ...
@@ -210,7 +210,7 @@ int main(void)
     // Read TokenIdCount from server side
     bytes = read(ConnectMsg.ServerHandle,
                  &TokenMsg.TokenIdCount,
-                 sizeof(TokenMsg.TokenIdCount));
+                 sizeof TokenMsg.TokenIdCount);
     Log(bytes, "read");
     printf("TokenMsg.TokenIdCount: %lld\n", TokenMsg.TokenIdCount);
 

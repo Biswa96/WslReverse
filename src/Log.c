@@ -42,20 +42,3 @@ Usage(void)
         L"  -u, --uninstall    [distribution name]      Uninstall distribution.\n"
         L"\n");
 }
-
-#define GUID_STRING 40
-
-void
-WINAPI
-PrintGuid(GUID* id, PWSTR string)
-{
-    _snwprintf_s(
-        string,
-        GUID_STRING,
-        GUID_STRING,
-        L"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-        id->Data1, id->Data2, id->Data3,
-        id->Data4[0], id->Data4[1], id->Data4[2],
-        id->Data4[3], id->Data4[4], id->Data4[5],
-        id->Data4[6], id->Data4[7]);
-}

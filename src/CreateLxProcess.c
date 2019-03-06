@@ -6,9 +6,17 @@
 #include "LxBus.h"
 #include <stdio.h>
 
-#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)
-#define ENABLE_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT)
-#define ENABLE_OUTPUT_MODE (DISABLE_NEWLINE_AUTO_RETURN | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)
+#define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE |\
+                             ENABLE_ECHO_INPUT  |\
+                             ENABLE_LINE_INPUT  |\
+                             ENABLE_PROCESSED_INPUT)
+
+#define ENABLE_INPUT_MODE (ENABLE_VIRTUAL_TERMINAL_INPUT |\
+                           ENABLE_WINDOW_INPUT)
+
+#define ENABLE_OUTPUT_MODE (DISABLE_NEWLINE_AUTO_RETURN |\
+                            ENABLE_VIRTUAL_TERMINAL_PROCESSING |\
+                            ENABLE_PROCESSED_OUTPUT)
 
 typedef struct _SvcCommIo {
     HANDLE hIn;
@@ -106,7 +114,7 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
             break;
 
         Status = TpAllocWork(&WorkReturn,
-                             (PTP_WORK_CALLBACK)CreateProcessAsync,
+                             CreateProcessAsync,
                              ToHandle(WaitMsg.ClientHandle),
                              NULL);
         LogStatus(Status, L"CreateProcessAsync TpAllocWork");
@@ -129,9 +137,8 @@ InitializeInterop(HANDLE ServerHandle,
 
     BOOL bRes;
     NTSTATUS Status;
-    wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
     HANDLE EventHandle, ProcHandle, ServerHandleDup;
-    HANDLE HeapHandle = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap;
+    HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Create an event to synchronize with wslhost.exe process
     Status = ZwCreateEvent(&EventHandle,
@@ -162,7 +169,7 @@ InitializeInterop(HANDLE ServerHandle,
     // Connect to LxssMessagePort for Windows interopt
     PTP_WORK WorkReturn = NULL;
     Status = TpAllocWork(&WorkReturn,
-                         (PTP_WORK_CALLBACK)CreateProcessWorker,
+                         CreateProcessWorker,
                          ServerHandleDup,
                          NULL);
 
@@ -192,24 +199,30 @@ InitializeInterop(HANDLE ServerHandle,
                                          NULL);
     }
 
-    // Create required string for CreateProcessW
+    //
+    // Create required commandline for WslHost process
+    // Format: WslHost.exe [CurrentDistroID] [ServerHandle] [EventHandle] [ProcessHandle] [LxInstanceId]
+    //
+    wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
     ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
+
+    UNICODE_STRING CurrentDistroIDstring;
+    RtlStringFromGUID(CurrentDistroID, &CurrentDistroIDstring);
 
     _snwprintf_s(CommandLine,
                  MAX_PATH,
                  MAX_PATH,
-                 L"%ls {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X} %ld %ld %ld",
+                 L"%ls %ls %ld %ld %ld",
                  WslHost,
-                 CurrentDistroID->Data1, CurrentDistroID->Data2, CurrentDistroID->Data3,
-                 CurrentDistroID->Data4[0], CurrentDistroID->Data4[1], CurrentDistroID->Data4[2],
-                 CurrentDistroID->Data4[3], CurrentDistroID->Data4[4], CurrentDistroID->Data4[5],
-                 CurrentDistroID->Data4[6], CurrentDistroID->Data4[7],
+                 CurrentDistroIDstring.Buffer,
                  ToULong(ServerHandle),
                  ToULong(EventHandle),
                  ToULong(ProcHandle));
 
     PROCESS_INFORMATION ProcInfo;
-    STARTUPINFOEXW SInfoEx = { 0 };
+    STARTUPINFOEXW SInfoEx;
+
+    RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
     SInfoEx.StartupInfo.cb = sizeof SInfoEx;
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
@@ -246,9 +259,10 @@ InitializeInterop(HANDLE ServerHandle,
                                           NULL);
     }
     else
-        LogResult(GetLastError(), L"CreteProcess");
+        LogResult(RtlGetLastWin32Error(), L"CreteProcess");
 
     // Cleanup
+    RtlFreeUnicodeString(&CurrentDistroIDstring);
     RtlFreeHeap(HeapHandle, 0, AttrbList);
     ZwClose(EventHandle);
     // ZwClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
@@ -268,13 +282,13 @@ CreateLxProcess(PWslSession* wslSession,
                 PWSTR LxssUserName)
 {
     HRESULT hRes;
-    HANDLE ProcessHandle = NULL, ServerHandle = NULL;
+    HANDLE LxProcessHandle = NULL, ServerHandle = NULL;
     GUID InitiatedDistroID, LxInstanceID;
     PVOID socket = NULL;
-    HANDLE HeapHandle = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap;
+    HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Console Window handle of current process (if any)
-    PRTL_USER_PROCESS_PARAMETERS ProcParam = NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters;
+    PRTL_USER_PROCESS_PARAMETERS ProcParam = GetUserProcessParameter();
     HANDLE ConsoleHandle = ProcParam->ConsoleHandle;
     wprintf(L"[+] ConHost: \n\t"
             L" ConhostServerId: %llu \n\t ConsoleHandle: 0x%p\n",
@@ -299,7 +313,8 @@ CreateLxProcess(PWslSession* wslSession,
 
     // Set console size from screen buffer co-ordinates
     COORD WindowSize;
-    CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer = { 0 };
+    CONSOLE_SCREEN_BUFFER_INFOEX ConBuffer;
+    RtlZeroMemory(&ConBuffer, sizeof ConBuffer);
     ConBuffer.cbSize = sizeof ConBuffer;
 
     GetConsoleScreenBufferInfoEx(CommIo.hOut, &ConBuffer);
@@ -323,7 +338,7 @@ CreateLxProcess(PWslSession* wslSession,
         &StdHandles,
         &InitiatedDistroID,
         &LxInstanceID,
-        &ProcessHandle,
+        &LxProcessHandle,
         &ServerHandle,
         &socket,
         &socket,
@@ -335,16 +350,14 @@ CreateLxProcess(PWslSession* wslSession,
         NTSTATUS Status;
         IO_STATUS_BLOCK IoStatusBlock;
 
-        wchar_t u_LxInstanceID[GUID_STRING];
-        wchar_t u_InitiatedDistroID[GUID_STRING];
-
-        PrintGuid(&LxInstanceID, u_LxInstanceID);
-        PrintGuid(&InitiatedDistroID, u_InitiatedDistroID);
+        UNICODE_STRING LxInstanceIDstring, InitiatedDistroIDstring;
+        RtlStringFromGUID(&LxInstanceID, &LxInstanceIDstring);
+        RtlStringFromGUID(&InitiatedDistroID, &InitiatedDistroIDstring);
 
         // Get NT side Process ID of CommandLine process
         LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
 
-        Status = ZwDeviceIoControlFile(ProcessHandle,
+        Status = ZwDeviceIoControlFile(LxProcessHandle,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -356,10 +369,13 @@ CreateLxProcess(PWslSession* wslSession,
         wprintf(L"[+] CreateLxProcess: \n\t"
                 L" NtPid: %u \n\t LxProcessHandle: 0x%p \n\t ServerHandle: 0x%p \n\t"
                 L" LxInstanceID: %ls \n\t InitiatedDistroID: %ls\n",
-                LxProcMsg.NtPid, ProcessHandle, ServerHandle,
-                u_LxInstanceID, u_InitiatedDistroID);
+                LxProcMsg.NtPid, LxProcessHandle, ServerHandle,
+                LxInstanceIDstring.Buffer, InitiatedDistroIDstring.Buffer);
 
-        if (SetHandleInformation(ProcessHandle, HANDLE_FLAG_INHERIT, 0))
+        RtlFreeUnicodeString(&LxInstanceIDstring);
+        RtlFreeUnicodeString(&InitiatedDistroIDstring);
+
+        if (SetHandleInformation(LxProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
             LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
             WaitForSignalMsg.TimeOut = INFINITE;
@@ -367,7 +383,7 @@ CreateLxProcess(PWslSession* wslSession,
             InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
 
             // Use the IOCTL to wait on the process to terminate
-            Status = ZwDeviceIoControlFile(ProcessHandle,
+            Status = ZwDeviceIoControlFile(LxProcessHandle,
                                            NULL,
                                            NULL,
                                            NULL,
@@ -377,10 +393,7 @@ CreateLxProcess(PWslSession* wslSession,
                                            &WaitForSignalMsg, sizeof WaitForSignalMsg);
 
             if (NT_SUCCESS(Status))
-            {
-                wprintf(L"[+] WaitForSignalMsg.ExitStatus: %u\n",
-                        WaitForSignalMsg.ExitStatus);
-            }
+                wprintf(L"[+] WaitForSignalMsg.ExitStatus: %u\n", WaitForSignalMsg.ExitStatus);
             else
                 LogStatus(Status, L"ZwDeviceIoControlFile");
         }
@@ -395,7 +408,7 @@ CreateLxProcess(PWslSession* wslSession,
 
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, PathVariable);
-    ZwClose(ProcessHandle);
+    ZwClose(LxProcessHandle);
     ZwClose(ServerHandle);
 
     return hRes;

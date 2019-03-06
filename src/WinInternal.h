@@ -4,7 +4,7 @@
 #include <Windows.h>
 
 #ifndef NT_SUCCESS
-#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+#define NT_SUCCESS(Status) (Status >= 0)
 #endif
 #define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
 #define ZwCurrentProcess() NtCurrentProcess()
@@ -299,6 +299,12 @@ typedef struct _TEB {
     ULONG LastErrorValue;
 } TEB, *PTEB;
 
+// macros with PEB & TEB
+#define RtlGetLastWin32Error() NtCurrentTeb()->LastErrorValue
+#define RtlGetProcessHeap() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap
+#define NtCurrentPeb() NtCurrentTeb()->ProcessEnvironmentBlock
+#define GetUserProcessParameter() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters
+
 typedef struct _OBJECT_ATTRIBUTES {
     ULONG Length;
     HANDLE RootDirectory;
@@ -312,7 +318,7 @@ typedef struct _IO_STATUS_BLOCK {
     union {
         NTSTATUS Status;
         PVOID Pointer;
-    } u;
+    };
     ULONG_PTR Information;
 } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
 
@@ -478,52 +484,77 @@ NTSTATUS ZwWaitForMultipleObjects(
     _In_ BOOLEAN Alertable,
     _In_opt_ PLARGE_INTEGER Timeout);
 
-NTSTATUS TpAllocWork(
-    _Out_ PTP_WORK *WorkReturn,
-    _In_ PTP_WORK_CALLBACK Callback,
-    _Inout_opt_ PVOID Context,
-    _In_opt_ PTP_CALLBACK_ENVIRON CallbackEnviron);
+NTSTATUS
+NTAPI
+TpAllocWork(PTP_WORK *WorkReturn,
+            PTP_WORK_CALLBACK Callback,
+            PVOID Context,
+            PTP_CALLBACK_ENVIRON CallbackEnviron);
 
-void TpPostWork(
-    _Inout_ PTP_WORK Work);
+void
+NTAPI
+TpPostWork(PTP_WORK Work);
 
-void TpReleaseWork(
-    _Inout_ PTP_WORK Work);
+void
+NTAPI
+TpReleaseWork(PTP_WORK Work);
 
-NTSTATUS RtlAcquirePrivilege(
-    _In_ PULONG Privilege,
-    _In_ ULONG NumPriv,
-    _In_ ULONG Flags,
-    _Out_ PULONG_PTR *ReturnedState);
+NTSTATUS
+NTAPI
+RtlAcquirePrivilege(PULONG Privilege,
+                    ULONG NumPriv,
+                    ULONG Flags,
+                    PULONG_PTR* ReturnedState);
 
-void RtlReleasePrivilege(
-    _In_ PULONG_PTR ReturnedState);
+PVOID
+NTAPI
+RtlAllocateHeap(PVOID HeapHandle,
+                ULONG Flags,
+                SIZE_T Size);
 
-PVOID RtlAllocateHeap(
-    _In_ PVOID HeapHandle,
-    _In_opt_ ULONG Flags,
-    _In_ SIZE_T Size);
+BOOLEAN
+NTAPI
+RtlFreeHeap(PVOID HeapHandle,
+            ULONG Flags,
+            PVOID BaseAddress);
 
-BOOLEAN RtlFreeHeap(
-    _In_ PVOID HeapHandle,
-    _In_opt_ ULONG Flags,
-    _In_opt_ PVOID BaseAddress);
+void
+NTAPI
+RtlFreeUnicodeString(PUNICODE_STRING UnicodeString);
 
-NTSTATUS RtlInitializeCriticalSectionEx(
-    _Out_ LPCRITICAL_SECTION lpCriticalSection,
-    _In_ DWORD dwSpinCount,
-    _In_ DWORD Flags);
+NTSTATUS
+NTAPI
+RtlGUIDFromString(PUNICODE_STRING GuidString,
+                  GUID* Guid);
 
-void RtlInitUnicodeString(
-    _Out_ PUNICODE_STRING DestinationString,
-    _In_ PCWSTR SourceString);
+void
+NTAPI
+RtlReleasePrivilege(PULONG_PTR ReturnedState);
 
-void RtlDeleteCriticalSection(
-    _Inout_ LPCRITICAL_SECTION lpCriticalSection);
+NTSTATUS
+NTAPI
+RtlStringFromGUID(GUID* Guid,
+                  PUNICODE_STRING GuidString);
+
+NTSTATUS
+NTAPI
+RtlInitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,
+                               DWORD dwSpinCount,
+                               DWORD Flags);
+
+void
+NTAPI
+RtlInitUnicodeString(PUNICODE_STRING DestinationString,
+                     PCWSTR SourceString);
+
+void
+NTAPI
+RtlDeleteCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
 #undef RtlZeroMemory
-void RtlZeroMemory(
-    _In_ PVOID Destination,
-    _In_ SIZE_T Length);
+void
+NTAPI
+RtlZeroMemory(PVOID Destination,
+              SIZE_T Length);
 
 #endif // WININTERNAL_H

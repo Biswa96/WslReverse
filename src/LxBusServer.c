@@ -12,10 +12,10 @@
 #define LXBUS_SERVER_NAME "minibus"
 #define MESSAGE_TO_SEND "Hello from LxBus Server\n\n"
 
-typedef struct _PipePair {
+struct PipePair {
     HANDLE Read;
     HANDLE Write;
-} PipePair;
+};
 
 HRESULT
 WINAPI
@@ -62,8 +62,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION,
-                                   &WaitMsg, sizeof(WaitMsg),
-                                   &WaitMsg, sizeof(WaitMsg));
+                                   &WaitMsg, sizeof WaitMsg,
+                                   &WaitMsg, sizeof WaitMsg);
     ClientHandle = ToHandle(WaitMsg.ClientHandle);
     if (NT_SUCCESS(Status))
     {
@@ -77,14 +77,14 @@ LxBusServer(PWslSession* wslSession,
     //
     // 2# Read message from LxBus client
     //
-    RtlZeroMemory(Buffer, sizeof(Buffer));
+    RtlZeroMemory(Buffer, sizeof Buffer);
     Status = ZwReadFile(ClientHandle,
                         EventHandle,
                         NULL,
                         NULL,
                         &IoStatusBlock,
                         Buffer,
-                        sizeof(Buffer),
+                        sizeof Buffer,
                         &ByteOffset,
                         NULL);
     if (Status == STATUS_PENDING)
@@ -102,7 +102,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          MESSAGE_TO_SEND,
-                         sizeof(MESSAGE_TO_SEND),
+                         sizeof MESSAGE_TO_SEND,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
@@ -112,7 +112,7 @@ LxBusServer(PWslSession* wslSession,
     //
     // 4# Marshal write end of pipe
     //
-    PipePair pipePairA = { NULL };
+    struct PipePair pipePairA = { NULL };
     Status = OpenAnonymousPipe(&pipePairA.Read, &pipePairA.Write);
 
     if (NT_SUCCESS(Status))
@@ -133,8 +133,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_HANDLE,
-                                   &HandleMsgA, sizeof(HandleMsgA),
-                                   &HandleMsgA, sizeof(HandleMsgA));
+                                   &HandleMsgA, sizeof HandleMsgA,
+                                   &HandleMsgA, sizeof HandleMsgA);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"HandleMsgA.HandleIdCount: %llu\n",
@@ -150,21 +150,21 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          &HandleMsgA.HandleIdCount,
-                         sizeof(HandleMsgA.HandleIdCount),
+                         sizeof HandleMsgA.HandleIdCount,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
 
     // Read message from pipe handle
-    RtlZeroMemory(Buffer, sizeof(Buffer));
+    RtlZeroMemory(Buffer, sizeof Buffer);
     Status = ZwReadFile(pipePairA.Read,
                         EventHandle,
                         NULL,
                         NULL,
                         &IoStatusBlock,
                         Buffer,
-                        sizeof(Buffer),
+                        sizeof Buffer,
                         &ByteOffset,
                         NULL);
     if (Status == STATUS_PENDING)
@@ -176,7 +176,7 @@ LxBusServer(PWslSession* wslSession,
     //
     // 5# Marshal read end of pipe
     //
-    PipePair pipePairB = { NULL };
+    struct PipePair pipePairB = { NULL };
     Status = OpenAnonymousPipe(&pipePairB.Read, &pipePairB.Write);
     LogStatus(Status, L"OpenAnonymousPipe");
     if (NT_SUCCESS(Status))
@@ -197,8 +197,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_HANDLE,
-                                   &HandleMsgB, sizeof(HandleMsgB),
-                                   &HandleMsgB, sizeof(HandleMsgB));
+                                   &HandleMsgB, sizeof HandleMsgB,
+                                   &HandleMsgB, sizeof HandleMsgB);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"HandleMsgB.HandleIdCount: %llu\n",
@@ -214,7 +214,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          &HandleMsgB.HandleIdCount,
-                         sizeof(HandleMsgB.HandleIdCount),
+                         sizeof HandleMsgB.HandleIdCount,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
@@ -227,7 +227,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          MESSAGE_TO_SEND,
-                         sizeof(MESSAGE_TO_SEND),
+                         sizeof MESSAGE_TO_SEND,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
@@ -247,7 +247,7 @@ LxBusServer(PWslSession* wslSession,
                             NULL,
                             &IoStatusBlock,
                             &VfsMsg.HandleIdCount,
-                            sizeof(VfsMsg.HandleIdCount),
+                            sizeof VfsMsg.HandleIdCount,
                             &ByteOffset,
                             NULL);
         if (Status == STATUS_PENDING)
@@ -265,8 +265,8 @@ LxBusServer(PWslSession* wslSession,
                                        NULL,
                                        &IoStatusBlock,
                                        IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_VFS_FILE,
-                                       &VfsMsg, sizeof(VfsMsg),
-                                       &VfsMsg, sizeof(VfsMsg));
+                                       &VfsMsg, sizeof VfsMsg,
+                                       &VfsMsg, sizeof VfsMsg);
         if (NT_SUCCESS(Status))
         {
             wprintf(L"VfsMsg.Handle: 0x%p\n",
@@ -287,7 +287,7 @@ LxBusServer(PWslSession* wslSession,
                         NULL,
                         &IoStatusBlock,
                         &ProcessMsg.ProcessIdCount,
-                        sizeof(ProcessMsg.ProcessIdCount),
+                        sizeof ProcessMsg.ProcessIdCount,
                         &ByteOffset,
                         NULL);
     if (Status == STATUS_PENDING)
@@ -305,8 +305,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_UNMARSHAL_PROCESS,
-                                   &ProcessMsg, sizeof(ProcessMsg),
-                                   &ProcessMsg, sizeof(ProcessMsg));
+                                   &ProcessMsg, sizeof ProcessMsg,
+                                   &ProcessMsg, sizeof ProcessMsg);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"ProcessMsg.ProcessHandle: 0x%p\n",
@@ -353,8 +353,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_CONSOLE,
-                                   &ConsoleMsg, sizeof(ConsoleMsg),
-                                   &ConsoleMsg, sizeof(ConsoleMsg));
+                                   &ConsoleMsg, sizeof ConsoleMsg,
+                                   &ConsoleMsg, sizeof ConsoleMsg);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"ConsoleMsg.ConsoleIdCount: %llu\n",
@@ -370,7 +370,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          &ConsoleMsg.ConsoleIdCount,
-                         sizeof(ConsoleMsg.ConsoleIdCount),
+                         sizeof ConsoleMsg.ConsoleIdCount,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
@@ -389,7 +389,7 @@ LxBusServer(PWslSession* wslSession,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER,
                                    NULL, 0,
-                                   &UnnamedServerMsg, sizeof(UnnamedServerMsg));
+                                   &UnnamedServerMsg, sizeof UnnamedServerMsg);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"UnnamedServerMsg.ServerPortIdCount: %llu\n",
@@ -405,7 +405,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          &UnnamedServerMsg.ServerPortIdCount,
-                         sizeof(UnnamedServerMsg.ServerPortIdCount),
+                         sizeof UnnamedServerMsg.ServerPortIdCount,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)
@@ -432,8 +432,8 @@ LxBusServer(PWslSession* wslSession,
                                    NULL,
                                    &IoStatusBlock,
                                    IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_FORK_TOKEN,
-                                   &TokenMsg, sizeof(TokenMsg),
-                                   &TokenMsg, sizeof(TokenMsg));
+                                   &TokenMsg, sizeof TokenMsg,
+                                   &TokenMsg, sizeof TokenMsg);
     if (NT_SUCCESS(Status))
     {
         wprintf(L"TokenMsg.TokenIdCount: %llu\n",
@@ -449,7 +449,7 @@ LxBusServer(PWslSession* wslSession,
                          NULL,
                          &IoStatusBlock,
                          &TokenMsg.TokenIdCount,
-                         sizeof(TokenMsg.TokenIdCount),
+                         sizeof TokenMsg.TokenIdCount,
                          &ByteOffset,
                          NULL);
     if (Status == STATUS_PENDING)

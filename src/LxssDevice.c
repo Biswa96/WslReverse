@@ -6,13 +6,17 @@ void LxssDevice(void)
     NTSTATUS Status;
     HANDLE LxssRootHandle = NULL;
     IO_STATUS_BLOCK IoStatusBlock;
-    UNICODE_STRING DestinationString = { 0 };
-    OBJECT_ATTRIBUTES ObjectAttributes = { 0 };
+    UNICODE_STRING ObjectName;
+    OBJECT_ATTRIBUTES ObjectAttributes;
 
-    RtlInitUnicodeString(&DestinationString, L"\\Device\\lxss");
+    RtlZeroMemory(&ObjectName, sizeof ObjectName);
+    RtlInitUnicodeString(&ObjectName, L"\\Device\\lxss");
+
+    RtlZeroMemory(&ObjectAttributes, sizeof ObjectAttributes);
     ObjectAttributes.Length = sizeof(ObjectAttributes);
     ObjectAttributes.Attributes = OBJ_CASE_INSENSITIVE;
-    ObjectAttributes.ObjectName = &DestinationString;
+    ObjectAttributes.ObjectName = &ObjectName;
+
     Status = ZwOpenFile(&LxssRootHandle,
                         FILE_WRITE_DATA,
                         &ObjectAttributes,
