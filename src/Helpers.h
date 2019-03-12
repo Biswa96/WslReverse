@@ -1,5 +1,5 @@
-#ifndef LOG_H
-#define LOG_H
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
@@ -11,8 +11,12 @@ void
 WINAPI
 LogStatus(NTSTATUS Status, PWSTR Function);
 
+NTSTATUS
+NTAPI
+MbsToWcs(PSTR src, PUNICODE_STRING dst);
+
 void
 WINAPI
 Usage(void);
 
-#endif // LOG_H
+#endif // HELPERS_H

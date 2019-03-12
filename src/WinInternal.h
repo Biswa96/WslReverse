@@ -7,9 +7,7 @@
 #define NT_SUCCESS(Status) (Status >= 0)
 #endif
 #define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
-#define ZwCurrentProcess() NtCurrentProcess()
 #define NtCurrentThread() ((HANDLE)(LONG_PTR)-2)
-#define ZwCurrentThread() NtCurrentThread()
 
 // From processhacker /phlib/include/phsup.h
 #define TICKS_PER_NS ((long long)1 * 10)
@@ -56,7 +54,7 @@ typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
     PCHAR Buffer;
-} STRING, ANSI_STRING, *PSTRING;
+} STRING, ANSI_STRING, *PSTRING, *PANSI_STRING;
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -300,6 +298,7 @@ typedef struct _TEB {
 } TEB, *PTEB;
 
 // macros with PEB & TEB
+#define RtlGetCommandLineW() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters->CommandLine.Buffer
 #define RtlGetLastWin32Error() NtCurrentTeb()->LastErrorValue
 #define RtlGetProcessHeap() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap
 #define NtCurrentPeb() NtCurrentTeb()->ProcessEnvironmentBlock
@@ -358,6 +357,10 @@ typedef enum _PROCESSINFOCLASS {
     ProcessBasicInformation = 0
 } PROCESSINFOCLASS;
 
+NTSTATUS
+NTAPI
+NtClose(HANDLE Handle);
+
 NTSTATUS ZwQueryInformationProcess(
     _In_ HANDLE ProcessHandle,
     _In_ PROCESSINFOCLASS ProcessInformationClass,
@@ -401,9 +404,6 @@ NTSTATUS ZwWriteFile(
     _In_ ULONG Length,
     _In_opt_ PLARGE_INTEGER ByteOffset,
     _In_opt_ PULONG Key);
-
-NTSTATUS ZwClose(
-    _In_ HANDLE Handle);
 
 NTSTATUS ZwCancelIoFileEx(
     _In_ HANDLE FileHandle,
@@ -466,23 +466,30 @@ NTSTATUS ZwReadVirtualMemory(
     _In_ SIZE_T BufferSize,
     _Out_opt_ PSIZE_T NumberOfBytesRead);
 
+NTSTATUS
+NTAPI
+NtSetEvent(HANDLE EventHandle,
+           PLONG PreviousState);
+
 typedef enum _WAIT_TYPE {
     WaitAll,
     WaitAny,
     WaitNotification
 } WAIT_TYPE;
 
-NTSTATUS ZwWaitForSingleObject(
-    _In_ HANDLE Handle,
-    _In_ BOOLEAN Alertable,
-    _In_opt_ PLARGE_INTEGER Timeout);
+NTSTATUS
+NTAPI
+NtWaitForSingleObject(HANDLE Handle,
+                      BOOLEAN Alertable,
+                      PLARGE_INTEGER Timeout);
 
-NTSTATUS ZwWaitForMultipleObjects(
-    _In_ ULONG Count, 
-    _In_ HANDLE Handles[],
-    _In_ WAIT_TYPE WaitType,
-    _In_ BOOLEAN Alertable,
-    _In_opt_ PLARGE_INTEGER Timeout);
+NTSTATUS
+NTAPI
+NtWaitForMultipleObjects(ULONG Count, 
+                         HANDLE Handles[],
+                         WAIT_TYPE WaitType,
+                         BOOLEAN Alertable,
+                         PLARGE_INTEGER Timeout);
 
 NTSTATUS
 NTAPI
@@ -505,6 +512,12 @@ RtlAcquirePrivilege(PULONG Privilege,
                     ULONG NumPriv,
                     ULONG Flags,
                     PULONG_PTR* ReturnedState);
+
+NTSTATUS
+NTAPI
+RtlAnsiStringToUnicodeString(PUNICODE_STRING DestinationString,
+                             PANSI_STRING SourceString,
+                             BOOLEAN AllocateDestinationString);
 
 PVOID
 NTAPI
@@ -542,10 +555,15 @@ RtlInitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,
                                DWORD dwSpinCount,
                                DWORD Flags);
 
-void
+NTSTATUS
 NTAPI
-RtlInitUnicodeString(PUNICODE_STRING DestinationString,
-                     PCWSTR SourceString);
+RtlInitAnsiStringEx(PANSI_STRING DestinationString,
+                    PSTR SourceString);
+
+NTSTATUS
+NTAPI
+RtlInitUnicodeStringEx(PUNICODE_STRING DestinationString,
+                       PCWSTR SourceString);
 
 void
 NTAPI

@@ -1,7 +1,7 @@
 #include "WinInternal.h"
 #include "LxssDevice.h"
 #include "WslSession.h"
-#include "Log.h"
+#include "Helpers.h"
 #include "CreateLxProcess.h"
 #include "LxBusServer.h"
 #include "wgetopt.h"
@@ -12,7 +12,7 @@ WINAPI
 main(void)
 {
     int wargc;
-    PWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    PWSTR* wargv = CommandLineToArgvW(RtlGetCommandLineW(), &wargc);
 
     if (wargc < 2)
     {
@@ -26,6 +26,8 @@ main(void)
     ULONG Version, DefaultUid, Flags, EnvironmentCount;
     GUID DistroId = { 0 }, DefaultDistroId = { 0 };
     UNICODE_STRING GuidString;
+    RtlZeroMemory(&GuidString, sizeof GuidString);
+
     HANDLE hTarFile = NULL;
     PWslSession* wslSession = NULL;
 
@@ -50,7 +52,7 @@ main(void)
         { 0,                no_argument,         0,   0  },
     };
 
-    hRes = CoInitializeEx(0, COINIT_MULTITHREADED);
+    hRes = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     hRes = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT,
                                 SecurityDelegation, NULL, EOAC_STATIC_CLOAKING, NULL);
     hRes = CoCreateInstance(&CLSID_LxssUserSession,
@@ -121,7 +123,6 @@ main(void)
                 LogResult(hRes, L"ExportDistribution");
             }
 
-            ZwClose(hTarFile);
             break;
         }
         case 'G':
@@ -189,8 +190,6 @@ main(void)
                     wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
                 LogResult(hRes, L"RegisterDistribution");
             }
-
-            ZwClose(hTarFile);
 
             if(hRes == S_OK)
                 wprintf(L"Installed\n");
@@ -314,7 +313,10 @@ main(void)
     }
 
     // Cleanup
-    RtlFreeUnicodeString(&GuidString);
+    if(GuidString.Buffer)
+        RtlFreeUnicodeString(&GuidString);
+    if (hTarFile)
+        NtClose(hTarFile);
     (*wslSession)->Release(wslSession);
     CoUninitialize();
     return 0;

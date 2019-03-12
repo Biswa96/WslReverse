@@ -1,7 +1,7 @@
 #include "WinInternal.h"
 #include "LxBus.h"
 #include "CreateWinProcess.h"
-#include "Log.h"
+#include "Helpers.h"
 #include <stdio.h>
 
 NTSTATUS
@@ -15,11 +15,11 @@ WaitForMessage(HANDLE ClientHandle,
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
-    Status = ZwWaitForSingleObject(EventHandle, FALSE, &Timeout);
+    Status = NtWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
         ZwCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
-        Status = ZwWaitForSingleObject(EventHandle, FALSE, NULL);
+        Status = NtWaitForSingleObject(EventHandle, FALSE, NULL);
     }
 
     return Status;
@@ -88,7 +88,7 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
     *ReadPipeHandle = hNamedPipeFile;
     *WritePipeHandle = hFile;
     if(hPipeServer)
-        ZwClose(hPipeServer);
+        NtClose(hPipeServer);
     return Status;
 }
 
@@ -130,7 +130,7 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
         Handles[0] = EventHandle;
         Handles[1] = ProcResult->ProcInfo.hProcess;
 
-        ZwWaitForMultipleObjects(ARRAY_SIZE(Handles),
+        NtWaitForMultipleObjects(ARRAY_SIZE(Handles),
                                  Handles,
                                  WaitAny,
                                  FALSE,
@@ -152,7 +152,7 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
     ResizePseudoConsole(ProcResult->hpCon, ConsoleSize);
 
     if(EventHandle)
-        ZwClose(EventHandle);
+        NtClose(EventHandle);
     return BasicInfo.ExitStatus;
 }
 
@@ -336,13 +336,13 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
 
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, LxReceiveMsg);
-    ZwClose(EventHandle);
+    NtClose(EventHandle);
     if(ProcResult.ProcInfo.hProcess)
-        ZwClose(ProcResult.ProcInfo.hProcess);
+        NtClose(ProcResult.ProcInfo.hProcess);
     if(ProcResult.ProcInfo.hThread)
-        ZwClose(ProcResult.ProcInfo.hThread);
-    ZwClose(ReadPipeHandle);
-    ZwClose(WritePipeHandle);
-    ZwClose(ClientHandle);
+        NtClose(ProcResult.ProcInfo.hThread);
+    NtClose(ReadPipeHandle);
+    NtClose(WritePipeHandle);
+    NtClose(ClientHandle);
     RtlDeleteCriticalSection(&CriticalSection);
 }

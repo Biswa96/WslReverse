@@ -6,34 +6,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\LxBusServer.c" />
-    <ClCompile Include="src\GetConhostServerId.c" />
-    <ClCompile Include="src\CreateLxProcess.c" />
-    <ClCompile Include="src\CreateProcessAsync.c" />
-    <ClCompile Include="src\CreateWinProcess.c" />
-    <ClCompile Include="src\Log.c" />
-    <ClCompile Include="src\LxssDevice.c" />
-    <ClCompile Include="src\wgetopt.c" />
-    <ClCompile Include="src\WslReverse.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\LxBusServer.h" />
-    <ClInclude Include="src\GetConhostServerId.h" />
-    <ClInclude Include="src\CreateLxProcess.h" />
-    <ClInclude Include="src\CreateProcessAsync.h" />
-    <ClInclude Include="src\CreateWinProcess.h" />
-    <ClInclude Include="src\Log.h" />
-    <ClInclude Include="src\LxBus.h" />
-    <ClInclude Include="src\LxssDevice.h" />
-    <ClInclude Include="src\wgetopt.h" />
-    <ClInclude Include="src\WinInternal.h" />
-    <ClInclude Include="src\WslSession.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{85478E9D-DB08-4F02-8C70-EC570DA57304}</ProjectGuid>
-    <RootNamespace>WSLReverse</RootNamespace>
+    <ProjectGuid>{34639984-6642-4F06-8160-51476AEA8E04}</ProjectGuid>
+    <RootNamespace>WslReverseHost</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,7 +21,8 @@
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -54,8 +31,6 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\</OutDir>
-    <IntDir>$(SolutionDir)bin\</IntDir>
-    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -67,6 +42,22 @@
       <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\CreateLxProcess.c" />
+    <ClCompile Include="..\src\CreateProcessAsync.c" />
+    <ClCompile Include="..\src\CreateWinProcess.c" />
+    <ClCompile Include="..\src\GetConhostServerId.c" />
+    <ClCompile Include="..\src\Helpers.c" />
+    <ClCompile Include="WslReverseHost.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\CreateLxProcess.h" />
+    <ClInclude Include="..\src\CreateProcessAsync.h" />
+    <ClInclude Include="..\src\CreateWinProcess.h" />
+    <ClInclude Include="..\src\GetConhostServerId.h" />
+    <ClInclude Include="..\src\Helpers.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
 </Project>

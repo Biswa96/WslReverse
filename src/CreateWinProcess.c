@@ -1,6 +1,6 @@
 #include "WinInternal.h"
 #include "LxBus.h"
-#include "Log.h"
+#include "Helpers.h"
 #include <stdio.h>
 
 typedef struct _X_HPCON {
@@ -47,7 +47,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
         ProcResult->hpCon = hpCon;
         LogResult(hRes, L"CreatePseudoConsole");
 
-        // Cast hpCon to a internal structure for ConHost PID
+        // Cast hpCon to an internal structure for ConHost PID
         RtlZeroMemory(&BasicInfo, sizeof BasicInfo);
         Status = ZwQueryInformationProcess(((PX_HPCON)hpCon)->hConHostProcess,
                                            ProcessBasicInformation,
@@ -99,21 +99,26 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
     SInfoEx.lpAttributeList = AttrList;
 
-    WCHAR w_ApplicationName[MAX_PATH], w_CurrentDirectory[MAX_PATH];
+    UNICODE_STRING u_ApplicationName, u_CurrentDirectory;
     PSTR ApplicationName = LxReceiveMsg->Unknown + LxReceiveMsg->WinApplicationPathOffset;
     PSTR CurrentDirectory = LxReceiveMsg->Unknown + LxReceiveMsg->WinCurrentPathOffset;
 
-    mbstowcs_s(NULL, w_ApplicationName, MAX_PATH, ApplicationName, MAX_PATH);
-    mbstowcs_s(NULL, w_CurrentDirectory, MAX_PATH, CurrentDirectory, MAX_PATH);
+    Status = MbsToWcs(ApplicationName, &u_ApplicationName);
 
-    bRes = CreateProcessW(w_ApplicationName,
+    // Check if current path exist in that offset
+    if (CurrentDirectory[0])
+        Status = MbsToWcs(CurrentDirectory, &u_CurrentDirectory);
+    else
+        u_CurrentDirectory.Buffer = NULL;
+
+    bRes = CreateProcessW(u_ApplicationName.Buffer,
                           NULL,
                           NULL,
                           NULL,
                           TRUE,
                           EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
                           NULL,
-                          w_CurrentDirectory,
+                          u_CurrentDirectory.Buffer,
                           &SInfoEx.StartupInfo,
                           (LPPROCESS_INFORMATION)&ProcResult->ProcInfo);
 
@@ -163,6 +168,12 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     // Set lasterror always success intentionally ;)
     ProcResult->LastError = ERROR_SUCCESS;
 
-    RtlFreeHeap(HeapHandle, 0, AttrList);
+    // Cleanup
+    if (u_ApplicationName.Buffer)
+        RtlFreeUnicodeString(&u_ApplicationName);
+    if (u_CurrentDirectory.Buffer)
+        RtlFreeUnicodeString(&u_CurrentDirectory);
+    if (AttrList)
+        RtlFreeHeap(HeapHandle, 0, AttrList);
     return bRes;
 }

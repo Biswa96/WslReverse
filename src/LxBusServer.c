@@ -1,6 +1,6 @@
 #include "WinInternal.h"
 #include "CreateProcessAsync.h"
-#include "Log.h"
+#include "Helpers.h"
 #include "WslSession.h"
 #include "LxBus.h"
 #include <stdio.h>
@@ -293,10 +293,7 @@ LxBusServer(PWslSession* wslSession,
     if (Status == STATUS_PENDING)
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
     if (NT_SUCCESS(Status))
-    {
-        wprintf(L"ProcessMsg.ProcessIdCount: %llu\n",
-                ProcessMsg.ProcessIdCount);
-    }
+        wprintf(L"[+] ProcessMsg: \n\t ProcessIdCount: %llu\n\t", ProcessMsg.ProcessIdCount);
 
     // Unmarshal it
     Status = ZwDeviceIoControlFile(ClientHandle,
@@ -308,10 +305,7 @@ LxBusServer(PWslSession* wslSession,
                                    &ProcessMsg, sizeof ProcessMsg,
                                    &ProcessMsg, sizeof ProcessMsg);
     if (NT_SUCCESS(Status))
-    {
-        wprintf(L"ProcessMsg.ProcessHandle: 0x%p\n",
-                ProcessMsg.ProcessHandle);
-    }
+        wprintf(L" ProcessHandle: 0x%p\n\t", ProcessMsg.ProcessHandle);
     else
         LogStatus(Status, L"ZwDeviceIoControlFile");
 
@@ -327,7 +321,7 @@ LxBusServer(PWslSession* wslSession,
                                    NULL, 0,
                                    &LxProcMsg, sizeof LxProcMsg);
     if (NT_SUCCESS(Status))
-        wprintf(L"LxProcMsg.NtPid: %u\n", LxProcMsg.NtPid);
+        wprintf(L" LxBusClientPID: %u\n", LxProcMsg.NtPid);
     else
         LogStatus(Status, L"ZwDeviceIoControlFile");
 
@@ -336,9 +330,9 @@ LxBusServer(PWslSession* wslSession,
     // 8# Create a session leader from any process handle
     //
     HANDLE ProcessHandle = NULL;
-    Status = ZwDuplicateObject(ZwCurrentProcess(),
-                               ZwCurrentProcess(),
-                               ZwCurrentProcess(),
+    Status = ZwDuplicateObject(NtCurrentProcess(),
+                               NtCurrentProcess(),
+                               NtCurrentProcess(),
                                &ProcessHandle,
                                0,
                                OBJ_INHERIT,
@@ -459,14 +453,14 @@ LxBusServer(PWslSession* wslSession,
     Sleep(1000);
 
     // Cleanup
-    ZwClose(ProcessHandle);
+    NtClose(ProcessHandle);
     RtlReleasePrivilege(ReturnedState);
-    ZwClose(pipePairA.Read);
-    ZwClose(pipePairA.Write);
-    ZwClose(pipePairB.Read);
-    ZwClose(pipePairB.Write);
-    ZwClose(EventHandle);
-    ZwClose(ServerHandle);
-    ZwClose(ToHandle(WaitMsg.ClientHandle));
+    NtClose(pipePairA.Read);
+    NtClose(pipePairA.Write);
+    NtClose(pipePairB.Read);
+    NtClose(pipePairB.Write);
+    NtClose(EventHandle);
+    NtClose(ServerHandle);
+    NtClose(ToHandle(WaitMsg.ClientHandle));
     return Status;
 }

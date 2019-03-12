@@ -10,7 +10,7 @@ void LxssDevice(void)
     OBJECT_ATTRIBUTES ObjectAttributes;
 
     RtlZeroMemory(&ObjectName, sizeof ObjectName);
-    RtlInitUnicodeString(&ObjectName, L"\\Device\\lxss");
+    Status = RtlInitUnicodeStringEx(&ObjectName, L"\\Device\\lxss");
 
     RtlZeroMemory(&ObjectAttributes, sizeof ObjectAttributes);
     ObjectAttributes.Length = sizeof(ObjectAttributes);

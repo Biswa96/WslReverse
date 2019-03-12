@@ -1,7 +1,7 @@
 #include "WinInternal.h"
 #include "CreateProcessAsync.h"
 #include "GetConhostServerId.h"
-#include "Log.h"
+#include "Helpers.h"
 #include "WslSession.h"
 #include "LxBus.h"
 #include <stdio.h>
@@ -124,7 +124,7 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
         TpReleaseWork(WorkReturn);
     }
 
-    ZwClose(ServerHandle);
+    NtClose(ServerHandle);
 }
 
 BOOL
@@ -151,16 +151,16 @@ InitializeInterop(HANDLE ServerHandle,
     bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
-    Status = ZwDuplicateObject(ZwCurrentProcess(),
-                               ZwCurrentProcess(),
-                               ZwCurrentProcess(),
+    Status = ZwDuplicateObject(NtCurrentProcess(),
+                               NtCurrentProcess(),
+                               NtCurrentProcess(),
                                &ProcHandle,
                                0,
                                OBJ_INHERIT,
                                DUPLICATE_SAME_ACCESS);
-    Status = ZwDuplicateObject(ZwCurrentProcess(),
+    Status = ZwDuplicateObject(NtCurrentProcess(),
                                ServerHandle,
-                               ZwCurrentProcess(),
+                               NtCurrentProcess(),
                                &ServerHandleDup,
                                0,
                                0,
@@ -203,17 +203,23 @@ InitializeInterop(HANDLE ServerHandle,
     // Create required commandline for WslHost process
     // Format: WslHost.exe [CurrentDistroID] [ServerHandle] [EventHandle] [ProcessHandle] [LxInstanceId]
     //
-    wchar_t WslHost[MAX_PATH], CommandLine[MAX_PATH];
-    ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", WslHost, MAX_PATH);
+    wchar_t ProgramName[MAX_PATH], CommandLine[MAX_PATH];
+    ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", ProgramName, MAX_PATH);
 
     UNICODE_STRING CurrentDistroIDstring;
     RtlStringFromGUID(CurrentDistroID, &CurrentDistroIDstring);
+
+    // Testing: Replace WslHost.exe with custom WslReverseHost.exe
+#ifdef _DEBUG
+    RtlZeroMemory(ProgramName, sizeof ProgramName);
+    wcscpy_s(ProgramName, MAX_PATH, L"WslReverseHost.exe");
+#endif
 
     _snwprintf_s(CommandLine,
                  MAX_PATH,
                  MAX_PATH,
                  L"%ls %ls %ld %ld %ld",
-                 WslHost,
+                 ProgramName,
                  CurrentDistroIDstring.Buffer,
                  ToULong(ServerHandle),
                  ToULong(EventHandle),
@@ -226,7 +232,7 @@ InitializeInterop(HANDLE ServerHandle,
     SInfoEx.StartupInfo.cb = sizeof SInfoEx;
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
-    // SInfoEx.StartupInfo.wShowWindow = SW_SHOWDEFAULT;
+    SInfoEx.StartupInfo.wShowWindow = SW_SHOWMINNOACTIVE;
     SInfoEx.lpAttributeList = AttrbList;
 
     // bInheritHandles must be TRUE for wslhost.exe
@@ -243,7 +249,7 @@ InitializeInterop(HANDLE ServerHandle,
 
     if (bRes)
     {
-        wprintf(L"[+] WslHost: \n\t CommandLine: %ls\n\t"
+        wprintf(L"[+] BackendHost: \n\t CommandLine: %ls\n\t"
                 L" ProcessId: %lu \n\t ProcessHandle: 0x%p \n\t ThreadHandle: 0x%p\n",
                 CommandLine,
                 ProcInfo.dwProcessId, ProcInfo.hProcess, ProcInfo.hThread);
@@ -252,7 +258,7 @@ InitializeInterop(HANDLE ServerHandle,
         Handles[0] = ProcInfo.hProcess;
         Handles[1] = EventHandle;
 
-        Status = ZwWaitForMultipleObjects(ARRAY_SIZE(Handles),
+        Status = NtWaitForMultipleObjects(ARRAY_SIZE(Handles),
                                           Handles,
                                           WaitAny,
                                           FALSE,
@@ -264,11 +270,11 @@ InitializeInterop(HANDLE ServerHandle,
     // Cleanup
     RtlFreeUnicodeString(&CurrentDistroIDstring);
     RtlFreeHeap(HeapHandle, 0, AttrbList);
-    ZwClose(EventHandle);
-    // ZwClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
-    ZwClose(ProcHandle);
-    ZwClose(ProcInfo.hProcess);
-    ZwClose(ProcInfo.hThread);
+    NtClose(EventHandle);
+    // NtClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
+    NtClose(ProcHandle);
+    NtClose(ProcInfo.hProcess);
+    NtClose(ProcInfo.hThread);
     return bRes;
 }
 
@@ -408,8 +414,8 @@ CreateLxProcess(PWslSession* wslSession,
 
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, PathVariable);
-    ZwClose(LxProcessHandle);
-    ZwClose(ServerHandle);
+    NtClose(LxProcessHandle);
+    NtClose(ServerHandle);
 
     return hRes;
 }

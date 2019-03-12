@@ -17,6 +17,20 @@ LogStatus(NTSTATUS Status, PWSTR Function)
         wprintf(L"[-] NTSTATUS 0x%08lX %ls\n", Status, Function);
 }
 
+NTSTATUS
+WINAPI
+MbsToWcs(PSTR src, PUNICODE_STRING dst)
+{
+    NTSTATUS Status = 0;
+    ANSI_STRING AnsiString;
+    RtlZeroMemory(&AnsiString, sizeof AnsiString);
+
+    Status = RtlInitAnsiStringEx(&AnsiString, src);
+    if(Status == 0)
+        Status = RtlAnsiStringToUnicodeString(dst, &AnsiString, TRUE);
+    return Status;
+}
+
 void
 WINAPI
 Usage(void)

@@ -158,7 +158,8 @@ int main(void)
                 IOCTL_LXBUS_IPC_CONNECTION_MARSHAL_PROCESS,
                 &ProcessMsg);
     Log(res, "ioctl");
-    printf("ProcessMsg.ProcessIdCount: %lld\n", ProcessMsg.ProcessIdCount);
+    printf("[+] ProcessMsg: \n\t ProcessIdCount: %lld \n\t LxBusClientPID: %d\n",
+           ProcessMsg.ProcessIdCount, getpid());
 
     // Write ProcessIdCount so that LxBus server can unmarshal it
     bytes = write(ConnectMsg.ServerHandle,

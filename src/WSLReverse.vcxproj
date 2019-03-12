@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LxBusServer.c" />
+    <ClCompile Include="GetConhostServerId.c" />
+    <ClCompile Include="CreateLxProcess.c" />
+    <ClCompile Include="CreateProcessAsync.c" />
+    <ClCompile Include="CreateWinProcess.c" />
+    <ClCompile Include="Helpers.c" />
+    <ClCompile Include="LxssDevice.c" />
+    <ClCompile Include="wgetopt.c" />
+    <ClCompile Include="WslReverse.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LxBusServer.h" />
+    <ClInclude Include="GetConhostServerId.h" />
+    <ClInclude Include="CreateLxProcess.h" />
+    <ClInclude Include="CreateProcessAsync.h" />
+    <ClInclude Include="CreateWinProcess.h" />
+    <ClInclude Include="Helpers.h" />
+    <ClInclude Include="LxBus.h" />
+    <ClInclude Include="LxssDevice.h" />
+    <ClInclude Include="wgetopt.h" />
+    <ClInclude Include="WinInternal.h" />
+    <ClInclude Include="WslSession.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{85478E9D-DB08-4F02-8C70-EC570DA57304}</ProjectGuid>
+    <RootNamespace>WSLReverse</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <SpectreMitigation>false</SpectreMitigation>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)bin\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
