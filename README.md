@@ -1,18 +1,32 @@
 # WslReverse
 
-[![Licence](https://img.shields.io/github/license/Biswa96/WslReverse.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![Top Language](https://img.shields.io/github/languages/top/Biswa96/WslReverse.svg?style=for-the-badge)](https://github.com/Biswa96/WslReverse.git)
-[![Code size](https://img.shields.io/github/languages/code-size/Biswa96/WslReverse.svg?style=for-the-badge)]()
+[![Licence](https://img.shields.io/github/license/Biswa96/WslReverse.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![Top Language](https://img.shields.io/github/languages/top/Biswa96/WslReverse.svg)](https://github.com/Biswa96/WslReverse.git)
+[![Code size](https://img.shields.io/github/languages/code-size/Biswa96/WslReverse.svg)]()
 
-Reveal hidden COM interface between WSL and Lxss Manager Service. Heavily inspired by kernel guru **Alex Ionescu's project [lxss](https://github.com/ionescu007/lxss)**. This project is just a concept, not a fully developed program and should be used for testing purposes. 
+Reveal hidden COM interface between WSL and Lxss Manager Service.
+Heavily inspired by kernel guru **Alex Ionescu's project [lxss]**.
+This project is just a concept, not a fully developed program and
+should be used for testing purposes. 
+
+[lxss]: https://github.com/ionescu007/lxss.git 
 
 ## How to build
 
-Clone this repository. Open the solution (.sln) or project (.vcxproj) file in Visual Studio and build it. Alternatively, run Visual Studio developer command prompt, go to the cloned folder and run this command: `msbuild.exe`. You can also build with mingw-w64 toolchain. Go to the folder in terminal run `make` command. 
+Clone this repository. Open the solution (.sln) or project (.vcxproj) file
+in Visual Studio and build it. Alternatively, run Visual Studio developer
+command prompt, go to the cloned folder and run `msbuild` command.
+This project can also be built with mingw-w64 toolchain. Open terminal in the
+cloned folder and run `make` command. The binaries will be in `/bin` folder. 
 
 ## How to use
 
-Download the binary from [Release page](https://github.com/Biswa96/WslReverse/releases), no installation steps require. This project only shows the hidden COM methods which may change in future Windows version. The COM vtable, used in this project, is according to _latest Windows 10 19H1 Insider Preview_. Here are the options of WslReverse: 
+Download the binary from [Release page], no installation steps are required.
+This project only shows the hidden COM methods which may change in future
+Windows version. The COM vtable, used in this project, is according to
+_latest Windows 10 20H1 Insider Preview_. Here are the options of WslReverse: 
+
+[Release page]: https://github.com/Biswa96/WslReverse/releases
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
@@ -44,7 +58,7 @@ src\
     +-- CreateWinProcess: Create Windows process with LxBus server
     +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
         |
-        |   +-- Log: Helping functions to log functions return values
+        |   +-- Helpers: Helping functions to log return values and more
         |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
         |   +-- WslSession: LxssUserSession COM interface
         |   |
@@ -57,7 +71,8 @@ src\
             +-- WslReverse: Main function with option processing
 ```
 
-Check out the Others folder to unleashes the hidden beast. Here are the list of files in Other folders: 
+Check out the Others folder to unleashes the hidden beast.
+Here are the list of files in Other folders: 
 
 * [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
 * [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` placed separately from `LxssManager.DLL` file. 
@@ -65,7 +80,11 @@ Check out the Others folder to unleashes the hidden beast. Here are the list of 
 
 ## Take a long ride with :minibus:
 
-To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and LxBusClient as root user in WSL. Those two binaries exchange some messages between WSL and Windows side using LxBus via. LxCore driver. Here are some of them:
+To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry,
+reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make`
+in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and
+LxBusClient as root user in WSL. Those two binaries exchange some messages between
+WSL and Windows side using LxBus via. LxCore driver. Here are some of them:
 
 | Step No. | LxBus Server (as Administrator)          | LxBus Client (as root)                |
 |:--------:|:----------------------------------------:|:-------------------------------------:|
@@ -80,7 +99,11 @@ To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry, r
 |  9       | Create unnamed LxBus server              | To be continued ...                   |
 | 10       | Marshal fork token                       | Unmarshal fork token                  |
 
-For detailed explanation, see Alex Ionescu's presentation [@34min](https://youtu.be/36Ykla27FIo?t=2077) at BlackHat USA 2016. There are many things that can be done with LxBus IPC mechanism. What interesting thing do you want to do with LxBus? :yum: 
+For detailed explanation, see Alex Ionescu's presentation [@34min]
+at BlackHat USA 2016. There are many things that can be done with LxBus
+IPC mechanism. What interesting thing do you want to do with LxBus? :yum: 
+
+[@34min]: https://youtu.be/36Ykla27FIo?t=2077
 
 ## Trace Events
 
@@ -98,16 +121,26 @@ For detailed explanation, see Alex Ionescu's presentation [@34min](https://youtu
 
 This project uses some definitions and data types from followings. Thanks to:
 
-* Alex Ionescu for [lxss project][1] and all the IOCTLs details ([MIT License][2]). 
-* Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API header files][3] ([GPLv3 License][4]). 
+* Alex Ionescu for [lxss project] and all the IOCTLs details ([MIT License]). 
+* Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API] ([GPLv3 License]). 
+
+[lxss project]: https://github.com/ionescu007/lxss
+[MIT License]: https://github.com/ionescu007/lxss/blob/master/LICENSE
+[native API]: https://github.com/processhacker/processhacker/tree/master/phnt
+[GPLv3 License]: https://github.com/processhacker/processhacker/blob/master/LICENSE.txt
+
 
 ## Contributing
 
-Need ideas to connect WSL with any other terminals like [mintty][5] without any ELF backend or any extra modules which creates extra processes. 
+Need ideas to connect WSL with any other terminals like [mintty] without any
+ELF backend or any extra modules which creates extra processes. 
+
+[mintty]: https://github.com/mintty/mintty
 
 ## License 
 
-This project is licensed under GNU Public License v3 or higher. You are free to study, modify or distribute the source code. 
+This project is licensed under GNU Public License v3 or higher.
+You are free to study, modify or distribute the source code. 
 
 ```
 WslReverse -- (c) Copyright 2018-19 Biswapriyo Nath
@@ -125,10 +158,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ```
-
-<!--Links-->
-[1]: https://github.com/ionescu007/lxss
-[2]: https://github.com/ionescu007/lxss/blob/master/LICENSE
-[3]: https://github.com/processhacker/processhacker/tree/master/phnt
-[4]: https://github.com/processhacker/processhacker/blob/master/LICENSE.txt
-[5]: https://github.com/mintty/mintty

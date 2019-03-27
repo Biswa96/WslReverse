@@ -43,6 +43,7 @@ main(void)
     UNICODE_STRING DistroIdString;
     GUID DistroId;
 
+    // Get LxssInstance only if it exist i.e. distribution is running
     Status = RtlInitUnicodeStringEx(&DistroIdString, wargv[1]);
     Status = RtlGUIDFromString(&DistroIdString, &DistroId);
     hRes = (*wslSession)->CreateInstance(wslSession, &DistroId, 3);
