@@ -220,27 +220,6 @@ struct _WslSession
 
     /**
     * PVOID ObjectStublessClient15;
-    * Query Distribution Configuration and Version is TWO for newer installation
-    * Write State registry to FIVE means upgrading
-    **/
-    HRESULT(STDMETHODCALLTYPE *BeginUpgradeDistribution)(
-        _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId,
-        _Out_ PULONG Version,
-        _Out_ PWSTR* BasePath);
-
-    /**
-    * PVOID ObjectStublessClient16;
-    * Query Distribution Configuration and Write State registry to ONE means installed
-    * Write Version registry to TWO for newer installation
-    **/
-    HRESULT(STDMETHODCALLTYPE *FinishUpgradeDistribution)(
-        _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId,
-        _In_ ULONG Version);
-
-    /**
-    * PVOID ObjectStublessClient17;
     * E_NOINTERFACE No such interface supported
     **/
     HRESULT(STDMETHODCALLTYPE *DisableVmMode)(
@@ -248,7 +227,7 @@ struct _WslSession
         _In_ GUID* DistroId);
 
     /**
-    * PVOID ObjectStublessClient18;
+    * PVOID ObjectStublessClient16;
     * E_NOINTERFACE No such interface supported
     **/
     HRESULT(STDMETHODCALLTYPE *EnableVmMode)(
@@ -256,7 +235,7 @@ struct _WslSession
         _In_ GUID* DistroId);
 
     /**
-    * PVOID ObjectStublessClient19;
+    * PVOID ObjectStublessClient17;
     * Allow only when RootLxBusAccess REG_DWORD enabled
     * Shows 'element not found' when no LxInstance present
     **/
@@ -267,7 +246,7 @@ struct _WslSession
         _Out_ PHANDLE ServerHandle);
 
     /**
-    * PVOID ObjectStublessClient20;
+    * PVOID ObjectStublessClient18;
     * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
@@ -276,7 +255,7 @@ struct _WslSession
         _In_ HANDLE FileHandle);
 
     /**
-    * PVOID ObjectStublessClient21;
+    * PVOID ObjectStublessClient19;
     * The filename from standard output.
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistributionFromPipe)(
@@ -286,4 +265,4 @@ struct _WslSession
 
 };
 
-#endif //WSLSESSION_H
+#endif // WSLSESSION_H
