@@ -71,13 +71,6 @@ src\
             +-- WslReverse: Main function with option processing
 ```
 
-Check out the Others folder to unleashes the hidden beast.
-Here are the list of files in Other folders: 
-
-* [Lxss_Service.REG](Others/Lxss_Service.REG): Enables Adss Bus, Force case sensitivity in DRVFS, Enable default flag and more fun stuffs. 
-* [ExtractResource.c](Others/ExtractResource.c): Extract `init` and `bsdtar` from LxssManager.dll file. From Windows 10 insider build 18242, this doesn't work because `init` and `bsdtar` placed separately from `LxssManager.DLL` file. 
-* [SuspendUpgrade.c](Others/SuspendUpgrade.c): Suspend upgrade and uninstallation procedure. 
-
 ## Take a long ride with :minibus:
 
 To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry,
@@ -142,19 +135,18 @@ ELF backend or any extra modules which creates extra processes.
 This project is licensed under GNU Public License v3 or higher.
 You are free to study, modify or distribute the source code. 
 
-```
-WslReverse -- (c) Copyright 2018-19 Biswapriyo Nath
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-```
+    WslReverse -- Use COM interface between WSL and Lxss Manager Service
+    Copyright (c) 2018-19 Biswapriyo Nath
+    
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
