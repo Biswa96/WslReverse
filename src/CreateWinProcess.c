@@ -161,7 +161,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
             LogStatus(Status, L"ZwReadVirtualMemory");
 
         // From IMAGE_OPTIONAL_HEADER structure
-        if (Peb.ImageSubsystemMinorVersion == IMAGE_SUBSYSTEM_WINDOWS_GUI)
+        if (Peb.ImageSubsystem == IMAGE_SUBSYSTEM_WINDOWS_GUI)
             ProcResult->IsSubsystemGUI |= INTEROP_RESTORE_CONSOLE_STATE_MODE;
     }
 

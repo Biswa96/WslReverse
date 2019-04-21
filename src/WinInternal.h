@@ -116,35 +116,6 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
     ULONG DefaultThreadpoolCpuSetMaskCount;
 } RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
-typedef struct _ACTIVATION_CONTEXT_DATA {
-    ULONG Magic;
-    ULONG HeaderSize;
-    ULONG FormatVersion;
-    ULONG TotalSize;
-    ULONG DefaultTocOffset;
-    ULONG ExtendedTocOffset;
-    ULONG AssemblyRosterOffset;
-    ULONG Flags;
-} ACTIVATION_CONTEXT_DATA, *PACTIVATION_CONTEXT_DATA;
-
-typedef struct _LEAP_SECOND_DATA {
-    UCHAR Enabled;
-    ULONG Count;
-    LARGE_INTEGER Data[ANYSIZE_ARRAY];
-} LEAP_SECOND_DATA, *PLEAP_SECOND_DATA;
-
-typedef struct _PEB_LDR_DATA {
-    ULONG Length;
-    BOOLEAN Initialized;
-    HANDLE SsHandle;
-    LIST_ENTRY InLoadOrderModuleList;
-    LIST_ENTRY InMemoryOrderModuleList;
-    LIST_ENTRY InInitializationOrderModuleList;
-    PVOID EntryInProgress;
-    BOOLEAN ShutdownInProgress;
-    HANDLE ShutdownThreadId;
-} PEB_LDR_DATA, *PPEB_LDR_DATA;
-
 typedef struct _PEB {
     UCHAR InheritedAddressSpace;
     UCHAR ReadImageFileExecOptions;
@@ -162,10 +133,9 @@ typedef struct _PEB {
             UCHAR IsLongPathAwareProcess : 1;
         };
     };
-    char Padding0[4];
     HANDLE Mutant;
     HMODULE ImageBaseAddress;
-    PPEB_LDR_DATA Ldr;
+    PVOID Ldr;
     PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
     PVOID SubSystemData;
     HANDLE ProcessHeap;
@@ -186,7 +156,6 @@ typedef struct _PEB {
             ULONG ReservedBits0 : 24;
         };
     };
-    UCHAR Padding1[4];
     union {
         PVOID KernelCallbackTable;
         PVOID UserSharedInfoPtr;
@@ -195,7 +164,6 @@ typedef struct _PEB {
     PSLIST_HEADER AtlThunkSListPtr32;
     PVOID ApiSetMap;
     ULONG TlsExpansionCounter;
-    char Padding2[4];
     PVOID TlsBitmap;
     ULONG TlsBitmapBits[2];
     PVOID ReadOnlySharedMemoryBase;
@@ -217,7 +185,6 @@ typedef struct _PEB {
     PVOID GdiSharedHandleTable;
     PVOID ProcessStarterHelper;
     ULONG GdiDCAttributeList;
-    char Padding3[4];
     PVOID LoaderLock;
     ULONG OSMajorVersion;
     ULONG OSMinorVersion;
@@ -227,29 +194,24 @@ typedef struct _PEB {
     ULONG ImageSubsystem;
     ULONG ImageSubsystemMajorVersion;
     ULONG ImageSubsystemMinorVersion;
-    char Padding4[4];
     ULONG_PTR ActiveProcessAffinityMask;
     ULONG GdiHandleBuffer[60];
     void(__stdcall *PostProcessInitRoutine)(void);
     PVOID TlsExpansionBitmap;
     ULONG TlsExpansionBitmapBits[32];
     ULONG SessionId;
-    char Padding5[4];
     LARGE_INTEGER AppCompatFlags;
     LARGE_INTEGER AppCompatFlagsUser;
     PVOID pShimData;
     PVOID AppCompatInfo;
     UNICODE_STRING CSDVersion;
-    PACTIVATION_CONTEXT_DATA ActivationContextData;
+    PVOID ActivationContextData;
     PVOID ProcessAssemblyStorageMap;
-    PACTIVATION_CONTEXT_DATA SystemDefaultActivationContextData;
+    PVOID SystemDefaultActivationContextData;
     PVOID SystemAssemblyStorageMap;
     ULONG_PTR MinimumStackCommit;
-    PVOID FlsCallback;
-    LIST_ENTRY FlsListHead;
-    PVOID FlsBitmap;
-    ULONG FlsBitmapBits[4];
-    ULONG FlsHighIndex;
+    PVOID SparePointers[4];
+    ULONG SpareUlongs[5];
     PVOID WerRegistrationData;
     PVOID WerShipAssertPtr;
     PVOID pUnused;
@@ -263,7 +225,6 @@ typedef struct _PEB {
             ULONG SpareTracingBits : 29;
         };
     };
-    char Padding6[4];
     ULONGLONG CsrServerReadOnlySharedMemoryBase;
     ULONG_PTR TppWorkerpListLock;
     LIST_ENTRY TppWorkerpList;
@@ -273,7 +234,7 @@ typedef struct _PEB {
     ULONG CloudFileDiagFlags;
     UCHAR PlaceholderCompatibilityMode;
     UCHAR PlaceholderCompatibilityModeReserved[7];
-    PLEAP_SECOND_DATA LeapSecondData;
+    PVOID LeapSecondData;
     union {
         ULONG LeapSecondFlags;
         struct {
@@ -282,13 +243,6 @@ typedef struct _PEB {
         };
     };
     ULONG NtGlobalFlag2;
-    union {
-        ULONG Win32Flags;
-        struct {
-            ULONG IsPosixDeleteDisabled : 1;
-            ULONG ReservedWin32Flags : 31;
-        };
-    };
 } PEB, *PPEB;
 
 typedef struct _TEB {
