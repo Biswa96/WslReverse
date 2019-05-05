@@ -222,20 +222,13 @@ struct _WslSession
     * PVOID ObjectStublessClient15;
     * E_NOINTERFACE No such interface supported
     **/
-    HRESULT(STDMETHODCALLTYPE *DisableVmMode)(
+    HRESULT (STDMETHODCALLTYPE *SetVersion) (
         _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId);
+        _In_ GUID* DistroId,
+        _In_ ULONG Version);
 
     /**
     * PVOID ObjectStublessClient16;
-    * E_NOINTERFACE No such interface supported
-    **/
-    HRESULT(STDMETHODCALLTYPE *EnableVmMode)(
-        _In_ PWslSession* wslSession,
-        _In_ GUID* DistroId);
-
-    /**
-    * PVOID ObjectStublessClient17;
     * Allow only when RootLxBusAccess REG_DWORD enabled
     * Shows 'element not found' when no LxInstance present
     **/
@@ -246,7 +239,7 @@ struct _WslSession
         _Out_ PHANDLE ServerHandle);
 
     /**
-    * PVOID ObjectStublessClient18;
+    * PVOID ObjectStublessClient17;
     * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
@@ -255,7 +248,7 @@ struct _WslSession
         _In_ HANDLE FileHandle);
 
     /**
-    * PVOID ObjectStublessClient19;
+    * PVOID ObjectStublessClient18;
     * The filename from standard output.
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistributionFromPipe)(
