@@ -2,7 +2,7 @@
 #include "CreateProcessAsync.h"
 #include "GetConhostServerId.h"
 #include "Helpers.h"
-#include "WslSession.h"
+#include "LxssUserSession.h"
 #include "LxBus.h"
 #include <stdio.h>
 
@@ -280,7 +280,7 @@ InitializeInterop(HANDLE ServerHandle,
 
 HRESULT
 WINAPI
-CreateLxProcess(PWslSession* wslSession,
+CreateLxProcess(ILxssUserSession* wslSession,
                 GUID* DistroID,
                 PSTR CommandLine,
                 PSTR* Arguments,
@@ -327,7 +327,7 @@ CreateLxProcess(PWslSession* wslSession,
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
-    hRes = (*wslSession)->CreateLxProcess(
+    hRes = wslSession->lpVtbl->CreateLxProcess(
         wslSession,
         DistroID,
         CommandLine,

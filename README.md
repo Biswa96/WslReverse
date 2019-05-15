@@ -60,7 +60,7 @@ src\
         |
         |   +-- Helpers: Helping functions to log return values and more
         |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
-        |   +-- WslSession: LxssUserSession COM interface
+        |   +-- LxssUserSession: LxssUserSession COM interface
         |   |
         +-- CreateLxProcess: Run WSL pico processes
             |

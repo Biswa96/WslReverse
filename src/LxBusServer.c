@@ -1,7 +1,7 @@
 #include "WinInternal.h"
 #include "CreateProcessAsync.h"
 #include "Helpers.h"
-#include "WslSession.h"
+#include "LxssUserSession.h"
 #include "LxBus.h"
 #include <stdio.h>
 
@@ -19,7 +19,7 @@ struct PipePair {
 
 HRESULT
 WINAPI
-LxBusServer(PWslSession* wslSession,
+LxBusServer(ILxssUserSession* wslSession,
             GUID* DistroID)
 {
     HRESULT hRes;
@@ -41,10 +41,8 @@ LxBusServer(PWslSession* wslSession,
     //
     // 1# Register a LxBus server
     //
-    hRes = (*wslSession)->RegisterLxBusServer(wslSession,
-                                              DistroID,
-                                              LXBUS_SERVER_NAME,
-                                              &ServerHandle);
+    hRes = wslSession->lpVtbl->RegisterLxBusServer(wslSession, DistroID, LXBUS_SERVER_NAME, &ServerHandle);
+
     if (FAILED(hRes))
     {
         LogResult(hRes, L"RegisterLxBusServer");

@@ -1,5 +1,5 @@
-#ifndef WSLSESSION_H
-#define WSLSESSION_H
+#ifndef LXSSUSERSESSION_H
+#define LXSSUSERSESSION_H
 
 #include <Windows.h>
 
@@ -14,11 +14,6 @@ static const GUID IID_ILxssUserSession = {
     0xFE04,
     0x41D9,
     { 0xB9, 0x78, 0xDC, 0xAC, 0xA9, 0xA9, 0xB5, 0xB9 } };
-
-typedef enum _WslDefaultUID {
-    RootUser = 0,
-    NormalUser = 1000
-} WslDefaultUID;
 
 typedef enum _WSL_DISTRIBUTION_STATES {
     DistroStateAll = 0,
@@ -50,20 +45,20 @@ typedef struct _LXSS_STD_HANDLES {
     LXSS_STD_HANDLE StdErr;
 } LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
 
-typedef struct _WslSession WslSession, *PWslSession;
+typedef struct _ILxssUserSession ILxssUserSession;
 
-struct _WslSession
+struct _ILxssUserSessionVtbl
 {
     HRESULT(STDMETHODCALLTYPE *QueryInterface)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* riid,
         _Out_ PVOID *ppv);
 
     ULONG(STDMETHODCALLTYPE *AddRef)(
-        _In_ PWslSession* This);
+        _In_ ILxssUserSession* This);
 
     ULONG(STDMETHODCALLTYPE *Release)(
-        _In_ PWslSession* This);
+        _In_ ILxssUserSession* This);
 
     /**
     * PVOID ObjectStublessClient3;
@@ -71,7 +66,7 @@ struct _WslSession
     * If no DistroId is provided get the default distribuiton GUID
     **/
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
         _In_opt_ ULONG InitializeFlag);
 
@@ -82,7 +77,7 @@ struct _WslSession
     * State Must be TWO for newer installation
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
         _In_ HANDLE TarGzFileHandle,
@@ -94,7 +89,7 @@ struct _WslSession
     * RPC_S_CANNOT_SUPPORT The requested operation is not supported.
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterDistributionFromPipe)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
         _In_ ULONG State,
         _In_ HANDLE TarGzFileHandle,
@@ -107,7 +102,7 @@ struct _WslSession
     * Allows only if that value is ONE means installed
     **/
     HRESULT(STDMETHODCALLTYPE *GetDistributionId)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistroName,
         _In_ WSL_DISTRIBUTION_STATES DistroState,
         _Out_ GUID* DistroId);
@@ -118,7 +113,7 @@ struct _WslSession
     * Use IServerSecurity interface and terminates any process
     **/
     HRESULT(STDMETHODCALLTYPE *TerminateDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId);
 
     /**
@@ -127,7 +122,7 @@ struct _WslSession
     * Write State registry value as FOUR means uninstalling
     **/
     HRESULT(STDMETHODCALLTYPE *UnregisterDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId);
 
     /**
@@ -136,7 +131,7 @@ struct _WslSession
     * Writes Environment variables iff EnvironmentCount present
     **/
     HRESULT(STDMETHODCALLTYPE *ConfigureDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
         _In_opt_ PCSTR KernelCommandLine,
         _In_opt_ ULONG DefaultUid,
@@ -150,7 +145,7 @@ struct _WslSession
     * Query CurrentControlSet\services\LxssManager\DistributionFlags
     **/
     HRESULT(STDMETHODCALLTYPE *GetDistributionConfiguration)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
         _Out_ PWSTR* DistributionName,
         _Out_ PULONG Version,
@@ -167,7 +162,7 @@ struct _WslSession
     * Delete that if BasePath doesn't exist
     **/
     HRESULT(STDMETHODCALLTYPE *GetDefaultDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _Out_ GUID* DistroId);
 
     /**
@@ -176,7 +171,7 @@ struct _WslSession
     * Write DefaultDistribution registry with provided GUID
     **/
     HRESULT(STDMETHODCALLTYPE *SetDefaultDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId);
 
     /**
@@ -185,7 +180,7 @@ struct _WslSession
     * Returns GUID list in 16 bytes offsets
     **/
     HRESULT(STDMETHODCALLTYPE *EnumerateDistributions)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ WSL_DISTRIBUTION_STATES DistroState,
         _Out_ PULONG DistroCount,
         _Out_ GUID** DistroIdList);
@@ -195,7 +190,7 @@ struct _WslSession
     * Related with hidden WSL_VM_Mode feature
     **/
     HRESULT(STDMETHODCALLTYPE *CreateLxProcess)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
         _In_opt_ PSTR CommandLine,
         _In_opt_ ULONG ArgumentCount,
@@ -222,8 +217,8 @@ struct _WslSession
     * PVOID ObjectStublessClient15;
     * E_NOINTERFACE No such interface supported
     **/
-    HRESULT (STDMETHODCALLTYPE *SetVersion) (
-        _In_ PWslSession* wslSession,
+    HRESULT(STDMETHODCALLTYPE *SetVersion)(
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
         _In_ ULONG Version);
 
@@ -233,7 +228,7 @@ struct _WslSession
     * Shows 'element not found' when no LxInstance present
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterLxBusServer)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
         _In_ PSTR LxBusServerName,
         _Out_ PHANDLE ServerHandle);
@@ -243,7 +238,7 @@ struct _WslSession
     * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
         _In_ HANDLE FileHandle);
 
@@ -252,10 +247,15 @@ struct _WslSession
     * The filename from standard output.
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistributionFromPipe)(
-        _In_ PWslSession* wslSession,
+        _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
         _In_ HANDLE FileHandle);
 
 };
 
-#endif // WSLSESSION_H
+struct _ILxssUserSession
+{
+    struct _ILxssUserSessionVtbl* lpVtbl;
+};
+
+#endif // LXSSUSERSESSION_H

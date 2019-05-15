@@ -1,7 +1,7 @@
-#include "../src/WinInternal.h"
-#include "../src/WslSession.h"
-#include "../src/CreateLxProcess.h"
-#include "../src/GetConhostServerId.h"
+#include "WinInternal.h"
+#include "LxssUserSession.h"
+#include "CreateLxProcess.h"
+#include "GetConhostServerId.h"
 #include <stdio.h>
 
 void
@@ -26,7 +26,7 @@ main(void)
     }
 
     HRESULT hRes;
-    PWslSession* wslSession = NULL;
+    ILxssUserSession* wslSession = NULL;
 
     hRes = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     hRes = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT,
@@ -46,7 +46,7 @@ main(void)
     // Get LxssInstance only if it exist i.e. distribution is running
     Status = RtlInitUnicodeStringEx(&DistroIdString, wargv[1]);
     Status = RtlGUIDFromString(&DistroIdString, &DistroId);
-    hRes = (*wslSession)->CreateInstance(wslSession, &DistroId, 3);
+    hRes = wslSession->lpVtbl->CreateInstance(wslSession, &DistroId, 3);
     if (hRes != 0)
         return 0;
 
@@ -78,6 +78,6 @@ main(void)
         NtClose(EventHandle);
     if (ServerHandle)
         NtClose(ServerHandle);
-    hRes = (*wslSession)->Release(wslSession);
+    hRes = wslSession->lpVtbl->Release(wslSession);
     CoUninitialize();
 }

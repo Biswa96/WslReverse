@@ -1,6 +1,6 @@
 #include "WinInternal.h"
 #include "LxssDevice.h"
-#include "WslSession.h"
+#include "LxssUserSession.h"
 #include "Helpers.h"
 #include "CreateLxProcess.h"
 #include "LxBusServer.h"
@@ -29,7 +29,7 @@ main(void)
     RtlZeroMemory(&GuidString, sizeof GuidString);
 
     HANDLE hTarFile = NULL;
-    PWslSession* wslSession = NULL;
+    ILxssUserSession* wslSession = NULL;
 
     // Option table
     const wchar_t* OptionString = L"b:d:e:Gg:hi:lr:S:s:t:u:x";
@@ -78,9 +78,10 @@ main(void)
         }
         case 'b':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, DistroStateAll, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, DistroStateAll, &DistroId);
             LogResult(hRes, L"GetDistributionId");
-            hRes = (*wslSession)->CreateInstance(wslSession, &DistroId, 0);
+
+            hRes = wslSession->lpVtbl->CreateInstance(wslSession, &DistroId, 0);
             LogResult(hRes, L"CreateInstance");
             if (hRes < 0)
                 return hRes;
@@ -89,7 +90,7 @@ main(void)
         }
         case 'd':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, DistroStateAll, &DefaultDistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, DistroStateAll, &DefaultDistroId);
             RtlStringFromGUID(&DefaultDistroId, &GuidString);
             LogResult(hRes, L"GetDistributionId");
             wprintf(L"%ls: %ls\n", optarg, GuidString.Buffer);
@@ -109,17 +110,17 @@ main(void)
                                    FILE_ATTRIBUTE_NORMAL,
                                    NULL);
 
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
 
             if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
             {
                 // hTarFile = GetStdHandle(STD_OUTPUT_HANDLE)
-                hRes = (*wslSession)->ExportDistributionFromPipe(wslSession, &DistroId, hTarFile);
+                hRes = wslSession->lpVtbl->ExportDistributionFromPipe(wslSession, &DistroId, hTarFile);
                 LogResult(hRes, L"ExportDistributionFromPipe");
             }
             else
             {
-                hRes = (*wslSession)->ExportDistribution(wslSession, &DistroId, hTarFile);
+                hRes = wslSession->lpVtbl->ExportDistribution(wslSession, &DistroId, hTarFile);
                 LogResult(hRes, L"ExportDistribution");
             }
 
@@ -127,7 +128,7 @@ main(void)
         }
         case 'G':
         {
-            hRes = (*wslSession)->GetDefaultDistribution(wslSession, &DistroId);
+            hRes = wslSession->lpVtbl->GetDefaultDistribution(wslSession, &DistroId);
             LogResult(hRes, L"GetDefaultDistribution");
             RtlStringFromGUID(&DistroId, &GuidString);
             wprintf(L"%ls\n", GuidString.Buffer);
@@ -139,10 +140,10 @@ main(void)
             PSTR KernelCommandLine;
             PSTR* DefaultEnvironment = NULL;
 
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
 
-            hRes = (*wslSession)->GetDistributionConfiguration(
+            hRes = wslSession->lpVtbl->GetDistributionConfiguration(
                 wslSession, &DistroId, &DistributionName, &Version, &BasePath,
                 &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
             LogResult(hRes, L"GetDistributionConfiguration");
@@ -180,13 +181,13 @@ main(void)
             if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
             {
                 // hTarFile = GetStdHandle(STD_INPUT_HANDLE)
-                hRes = (*wslSession)->RegisterDistributionFromPipe(
+                hRes = wslSession->lpVtbl->RegisterDistributionFromPipe(
                     wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
                 LogResult(hRes, L"RegisterDistributionFromPipe");
             }
             else
             {
-                hRes = (*wslSession)->RegisterDistribution(
+                hRes = wslSession->lpVtbl->RegisterDistribution(
                     wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
                 LogResult(hRes, L"RegisterDistribution");
             }
@@ -199,11 +200,8 @@ main(void)
         {
             GUID* DistroIdList = NULL;
             ULONG DistroCount = 0;
-            hRes = (*wslSession)->GetDefaultDistribution(wslSession, &DefaultDistroId);
-            hRes = (*wslSession)->EnumerateDistributions(wslSession,
-                                                         DistroStateAll,
-                                                         &DistroCount,
-                                                         &DistroIdList);
+            hRes = wslSession->lpVtbl->GetDefaultDistribution(wslSession, &DefaultDistroId);
+            hRes = wslSession->lpVtbl->EnumerateDistributions(wslSession, DistroStateAll, &DistroCount, &DistroIdList);
 
             if (DistroCount)
             {
@@ -219,7 +217,7 @@ main(void)
                     if (DistroId.Data1 == DefaultDistroId.Data1 &&
                         (DistroId.Data4 - DefaultDistroId.Data4))
                     {
-                        hRes = (*wslSession)->GetDistributionConfiguration(
+                        hRes = wslSession->lpVtbl->GetDistributionConfiguration(
                             wslSession, &DistroId, &DistributionName, &Version, &BasePath,
                             &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
 
@@ -228,7 +226,7 @@ main(void)
                     }
                     else
                     {
-                        hRes = (*wslSession)->GetDistributionConfiguration(
+                        hRes = wslSession->lpVtbl->GetDistributionConfiguration(
                             wslSession, &DistroId, &DistributionName, &Version, &BasePath,
                             &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
 
@@ -246,7 +244,7 @@ main(void)
         }
         case 'r':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
 
             PSTR Arguments[] = { "-bash" };
@@ -256,15 +254,15 @@ main(void)
         }
         case 'S':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
-            hRes = (*wslSession)->SetDefaultDistribution(wslSession, &DistroId);
+            hRes = wslSession->lpVtbl->SetDefaultDistribution(wslSession, &DistroId);
             LogResult(hRes, L"SetDefaultDistribution");
             break;
         }
         case 's':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
             PCSTR KernelCommandLine = "BOOT_IMAGE=/kernel init=/init ro";
             PCSTR DefaultEnvironment[] = {
@@ -274,21 +272,17 @@ main(void)
                 "TERM=xterm-256color"
             };
 
-            hRes = (*wslSession)->ConfigureDistribution(wslSession,
-                                                        &DistroId,
-                                                        KernelCommandLine,
-                                                        RootUser,
-                                                        ARRAY_SIZE(DefaultEnvironment),
-                                                        DefaultEnvironment,
-                                                        WSL_DISTRIBUTION_FLAGS_DEFAULT);
+            hRes = wslSession->lpVtbl->ConfigureDistribution(
+                wslSession, &DistroId, KernelCommandLine, 0,
+                ARRAY_SIZE(DefaultEnvironment), DefaultEnvironment, WSL_DISTRIBUTION_FLAGS_DEFAULT);
             LogResult(hRes, L"ConfigureDistribution");
             break;
         }
         case 't':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
-            hRes = (*wslSession)->TerminateDistribution(wslSession, &DistroId);
+            hRes = wslSession->lpVtbl->TerminateDistribution(wslSession, &DistroId);
             LogResult(hRes, L"TerminateDistribution");
             if (hRes == ERROR_SUCCESS)
                 wprintf(L"Distribution terminated successfully.\n");
@@ -296,9 +290,9 @@ main(void)
         }
         case 'u':
         {
-            hRes = (*wslSession)->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
             LogResult(hRes, L"GetDistributionId");
-            hRes = (*wslSession)->UnregisterDistribution(wslSession, &DistroId);
+            hRes = wslSession->lpVtbl->UnregisterDistribution(wslSession, &DistroId);
             LogResult(hRes, L"UnregisterDistribution");
             break;
         }
@@ -317,7 +311,7 @@ main(void)
         RtlFreeUnicodeString(&GuidString);
     if (hTarFile)
         NtClose(hTarFile);
-    (*wslSession)->Release(wslSession);
+    hRes = wslSession->lpVtbl->Release(wslSession);
     CoUninitialize();
     return 0;
 }

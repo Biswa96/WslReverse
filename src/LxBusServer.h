@@ -3,7 +3,7 @@
 
 HRESULT
 WINAPI
-LxBusServer(PWslSession* wslSession,
+LxBusServer(ILxssUserSession* wslSession,
             GUID* DistroID);
 
 #endif //CREATELXBUSSERVER_H

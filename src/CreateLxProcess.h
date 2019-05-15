@@ -9,7 +9,7 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
 
 HRESULT
 WINAPI
-CreateLxProcess(PWslSession* wslSession,
+CreateLxProcess(ILxssUserSession* wslSession,
                 GUID* DistroID,
                 PSTR CommandLine,
                 PSTR* Arguments,
