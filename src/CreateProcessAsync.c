@@ -18,7 +18,7 @@ WaitForMessage(HANDLE ClientHandle,
     Status = NtWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
-        ZwCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
+        NtCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
         Status = NtWaitForSingleObject(EventHandle, FALSE, NULL);
     }
 
@@ -56,7 +56,7 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
     ObjectAttributes.RootDirectory = hPipeServer;
     ObjectAttributes.Length = sizeof ObjectAttributes;
 
-    Status = ZwCreateNamedPipeFile(&hNamedPipeFile,
+    Status = NtCreateNamedPipeFile(&hNamedPipeFile,
                                    GENERIC_READ | SYNCHRONIZE | FILE_WRITE_ATTRIBUTES,
                                    &ObjectAttributes,
                                    &IoStatusBlock,
@@ -70,19 +70,19 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
                                    PAGE_SIZE,
                                    PAGE_SIZE,
                                    &DefaultTimeOut);
-    LogStatus(Status, L"ZwCreateNamedPipeFile");
+    LogStatus(Status, L"NtCreateNamedPipeFile");
 
     ObjectAttributes.Length = sizeof ObjectAttributes;
     ObjectAttributes.RootDirectory = hNamedPipeFile;
     ObjectAttributes.ObjectName = &ObjectName;
 
-    Status = ZwOpenFile(&hFile,
+    Status = NtOpenFile(&hFile,
                         GENERIC_WRITE | SYNCHRONIZE | FILE_READ_ATTRIBUTES,
                         &ObjectAttributes,
                         &IoStatusBlock,
                         FILE_SHARE_READ | FILE_SHARE_WRITE,
                         FILE_NON_DIRECTORY_FILE);
-    LogStatus(Status, L"ZwOpenFile");
+    LogStatus(Status, L"NtOpenFile");
 
     // Return handles to caller
     *ReadPipeHandle = hNamedPipeFile;
@@ -105,15 +105,15 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
 
     // Create an event to sync all reads and writes
     HANDLE EventHandle = NULL;
-    Status = ZwCreateEvent(&EventHandle,
+    Status = NtCreateEvent(&EventHandle,
                            EVENT_ALL_ACCESS,
                            NULL,
                            NotificationEvent,
                            TRUE);
-    LogStatus(Status, L"ZwCreateEvent");
+    LogStatus(Status, L"NtCreateEvent");
 
     // Read buffer from TIOCGWINSZ ioctl
-    Status = ZwReadFile(ReadPipeHandle,
+    Status = NtReadFile(ReadPipeHandle,
                         EventHandle,
                         NULL,
                         NULL,
@@ -122,7 +122,7 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
                         sizeof LxTerminalMsg,
                         &ByteOffset,
                         NULL);
-    LogStatus(Status, L"ZwReadFile");
+    LogStatus(Status, L"NtReadFile");
 
     if (Status == STATUS_PENDING)
     {
@@ -138,12 +138,12 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
     }
 
     RtlZeroMemory(&BasicInfo, sizeof BasicInfo);
-    Status = ZwQueryInformationProcess(ProcResult->ProcInfo.hProcess,
+    Status = NtQueryInformationProcess(ProcResult->ProcInfo.hProcess,
                                        ProcessBasicInformation,
                                        &BasicInfo,
                                        sizeof BasicInfo,
                                        NULL);
-    LogStatus(Status, L"ZwQueryInformationProcess");
+    LogStatus(Status, L"NtQueryInformationProcess");
 
     // Resize pseudo console when winsize.ws_row and winsize.ws_col received
     COORD ConsoleSize; 
@@ -176,15 +176,15 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
 
     // Create an event to sync all reads and writes
     bRes = RtlInitializeCriticalSectionEx(&CriticalSection, 0, 0);
-    Status = ZwCreateEvent(&EventHandle,
+    Status = NtCreateEvent(&EventHandle,
                            EVENT_ALL_ACCESS,
                            NULL,
                            SynchronizationEvent,
                            FALSE);
-    LogStatus(Status, L"ZwCreateEvent");
+    LogStatus(Status, L"NtCreateEvent");
 
     // Receive messages from client handle
-    Status = ZwReadFile(ClientHandle,
+    Status = NtReadFile(ClientHandle,
                         EventHandle,
                         NULL,
                         NULL,
@@ -198,7 +198,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                                    HEAP_ZERO_MEMORY,
                                    Buffer.NumberOfBytesToRead);
 
-    Status = ZwReadFile(ClientHandle,
+    Status = NtReadFile(ClientHandle,
                         EventHandle,
                         NULL,
                         NULL,
@@ -221,7 +221,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                 LxReceiveMsg->Unknown + LxReceiveMsg->WslEnvOffset);
     }
     else
-        LogStatus(Status, L"ZwReadFile");
+        LogStatus(Status, L"NtReadFile");
 
     for (int i = 0; i < TOTAL_IO_HANDLES; i++)
     {
@@ -229,7 +229,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
         wprintf(L"[+] VfsMsg: \n\t HandleIdCount: %llu\n\t",
                 LxReceiveMsg->VfsMsg[i].HandleIdCount);
 
-        Status = ZwDeviceIoControlFile(ClientHandle,
+        Status = NtDeviceIoControlFile(ClientHandle,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -241,7 +241,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
         if (NT_SUCCESS(Status))
             wprintf(L" Handle: %u\n", LxReceiveMsg->VfsMsg[i].Handle);
         else
-            LogStatus(Status, L"ZwDeviceIoControlFile");
+            LogStatus(Status, L"NtDeviceIoControlFile");
 
         bRes = SetHandleInformation(ToHandle(LxReceiveMsg->VfsMsg[i].Handle),
                                     HANDLE_FLAG_INHERIT,
@@ -272,7 +272,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     HandleMsg.Handle = ToULong(WritePipeHandle);
     HandleMsg.Type = LxOutputPipeType;
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -287,7 +287,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                 HandleMsg.HandleIdCount);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Send this buffer so that Lx side can unmarshal the pipe
     LXSS_MESSAGE_PORT_SEND_OBJECT LxSendMsg;
@@ -299,7 +299,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     LxSendMsg.IsSubsystemGUI = ProcResult.IsSubsystemGUI;
     LxSendMsg.HandleMessage.HandleIdCount = HandleMsg.HandleIdCount;
 
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -310,14 +310,14 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                          NULL);
     if (Status == STATUS_PENDING)
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
-    LogStatus(Status, L"ZwWriteFile");
+    LogStatus(Status, L"NtWriteFile");
 
     // Send NT process ExitStatus from ProcessInteropMessages
     LxSendMsg.InteropMessage.CreateNtProcessFlag = INTEROP_LXBUS_WRITE_NT_PROCESS_STATUS;
     LxSendMsg.InteropMessage.BufferSize = sizeof LxSendMsg.InteropMessage;
     LxSendMsg.InteropMessage.LastError = ProcessInteropMessages(ReadPipeHandle, &ProcResult);
 
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -328,7 +328,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
                          NULL);
     if (Status == STATUS_PENDING)
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
-    LogStatus(Status, L"ZwWriteFile");
+    LogStatus(Status, L"NtWriteFile");
 
     // Close pseudo console if command is without pipe
     if(ProcResult.hpCon)

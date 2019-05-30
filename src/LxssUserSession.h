@@ -1,8 +1,6 @@
 #ifndef LXSSUSERSESSION_H
 #define LXSSUSERSESSION_H
 
-#include <Windows.h>
-
 static const GUID CLSID_LxssUserSession = {
     0x4F476546,
     0xB412,
@@ -208,10 +206,10 @@ struct _ILxssUserSessionVtbl
         _Out_ GUID* LxInstanceId,
         _Out_ PHANDLE LxProcessHandle,
         _Out_ PHANDLE ServerHandle,
-        _In_ PVOID VmModeSocketA,
-        _In_ PVOID VmModeSocketB,
-        _In_ PVOID VmModeSocketC,
-        _In_ PVOID VmModeSocketD);
+        _Out_ SOCKET* VmModeSocketA,
+        _Out_ SOCKET* VmModeSocketB,
+        _Out_ SOCKET* VmModeSocketC,
+        _Out_ SOCKET* IpcServerSocket);
 
     /**
     * PVOID ObjectStublessClient15;

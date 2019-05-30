@@ -62,7 +62,7 @@ main(void)
                             (PVOID*)&wslSession);
 
     LogResult(hRes, L"CoCreateInstance");
-    if (!wslSession)
+    if (FAILED(hRes))
         return 0;
 
     // Option parsing
@@ -193,7 +193,7 @@ main(void)
             }
 
             if(hRes == S_OK)
-                wprintf(L"Installed\n");
+                wprintf(L"Install Finished.\n");
             break;
         }
         case 'l':

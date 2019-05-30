@@ -30,12 +30,12 @@ LxBusServer(ILxssUserSession* wslSession,
     HANDLE EventHandle = NULL, ServerHandle = NULL, ClientHandle = NULL;
 
     // Create a event to sync read/write
-    Status = ZwCreateEvent(&EventHandle,
+    Status = NtCreateEvent(&EventHandle,
                            EVENT_ALL_ACCESS,
                            NULL,
                            SynchronizationEvent,
                            TRUE);
-    LogStatus(Status, L"ZwCreateEvent");
+    LogStatus(Status, L"NtCreateEvent");
 
 
     //
@@ -54,7 +54,7 @@ LxBusServer(ILxssUserSession* wslSession,
     // Wait for connection from LxBus client infinitely
     LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG WaitMsg = { 0 };
     WaitMsg.Timeout = INFINITE;
-    Status = ZwDeviceIoControlFile(ServerHandle,
+    Status = NtDeviceIoControlFile(ServerHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -69,14 +69,14 @@ LxBusServer(ILxssUserSession* wslSession,
                 ServerHandle, ClientHandle);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
 
     //
     // 2# Read message from LxBus client
     //
     RtlZeroMemory(Buffer, sizeof Buffer);
-    Status = ZwReadFile(ClientHandle,
+    Status = NtReadFile(ClientHandle,
                         EventHandle,
                         NULL,
                         NULL,
@@ -94,7 +94,7 @@ LxBusServer(ILxssUserSession* wslSession,
     //
     // 3# Write message to LxBus client
     //
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -125,7 +125,7 @@ LxBusServer(ILxssUserSession* wslSession,
     HandleMsgA.Handle = ToULong(pipePairA.Write);
     HandleMsgA.Type = LxOutputPipeType;
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -139,10 +139,10 @@ LxBusServer(ILxssUserSession* wslSession,
                 HandleMsgA.HandleIdCount);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Write the HandleIdCount so that LxBus client can unmarshal
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -156,7 +156,7 @@ LxBusServer(ILxssUserSession* wslSession,
 
     // Read message from pipe handle
     RtlZeroMemory(Buffer, sizeof Buffer);
-    Status = ZwReadFile(pipePairA.Read,
+    Status = NtReadFile(pipePairA.Read,
                         EventHandle,
                         NULL,
                         NULL,
@@ -189,7 +189,7 @@ LxBusServer(ILxssUserSession* wslSession,
     HandleMsgB.Handle = ToULong(pipePairB.Read);
     HandleMsgB.Type = LxInputPipeType;
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -206,7 +206,7 @@ LxBusServer(ILxssUserSession* wslSession,
         LogStatus(Status, L"OpenAnonymousPipe");
 
     // Write the HandleIdCount so that LxBus client can unmarshal
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -219,7 +219,7 @@ LxBusServer(ILxssUserSession* wslSession,
         WaitForMessage(ClientHandle, EventHandle, &IoStatusBlock);
 
     // Write message to pipe handle
-    Status = ZwWriteFile(pipePairB.Write,
+    Status = NtWriteFile(pipePairB.Write,
                          EventHandle,
                          NULL,
                          NULL,
@@ -239,7 +239,7 @@ LxBusServer(ILxssUserSession* wslSession,
     for (int i = 0; i < TOTAL_IO_HANDLES; i++)
     {
         // Read the marshalled fd
-        Status = ZwReadFile(ClientHandle,
+        Status = NtReadFile(ClientHandle,
                             EventHandle,
                             NULL,
                             NULL,
@@ -257,7 +257,7 @@ LxBusServer(ILxssUserSession* wslSession,
         }
 
         // Unmarshal it
-        Status = ZwDeviceIoControlFile(ClientHandle,
+        Status = NtDeviceIoControlFile(ClientHandle,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -279,7 +279,7 @@ LxBusServer(ILxssUserSession* wslSession,
     LXBUS_IPC_MESSAGE_MARSHAL_PROCESS_MSG ProcessMsg = { 0 };
 
     // Read ProcessIdCount from client side
-    Status = ZwReadFile(ClientHandle,
+    Status = NtReadFile(ClientHandle,
                         EventHandle,
                         NULL,
                         NULL,
@@ -294,7 +294,7 @@ LxBusServer(ILxssUserSession* wslSession,
         wprintf(L"[+] ProcessMsg: \n\t ProcessIdCount: %llu\n\t", ProcessMsg.ProcessIdCount);
 
     // Unmarshal it
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -305,12 +305,12 @@ LxBusServer(ILxssUserSession* wslSession,
     if (NT_SUCCESS(Status))
         wprintf(L" ProcessHandle: 0x%p\n\t", ProcessMsg.ProcessHandle);
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Get NT side Process ID of LxBus client process
     LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
 
-    Status = ZwDeviceIoControlFile(ProcessMsg.ProcessHandle,
+    Status = NtDeviceIoControlFile(ProcessMsg.ProcessHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -321,14 +321,14 @@ LxBusServer(ILxssUserSession* wslSession,
     if (NT_SUCCESS(Status))
         wprintf(L" LxBusClientPID: %u\n", LxProcMsg.NtPid);
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
 
     //
     // 8# Create a session leader from any process handle
     //
     HANDLE ProcessHandle = NULL;
-    Status = ZwDuplicateObject(NtCurrentProcess(),
+    Status = NtDuplicateObject(NtCurrentProcess(),
                                NtCurrentProcess(),
                                NtCurrentProcess(),
                                &ProcessHandle,
@@ -339,7 +339,7 @@ LxBusServer(ILxssUserSession* wslSession,
     LXBUS_IPC_MESSAGE_MARSHAL_CONSOLE_MSG ConsoleMsg = { 0 };
     ConsoleMsg.Handle = ToULong(ProcessHandle);
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -353,10 +353,10 @@ LxBusServer(ILxssUserSession* wslSession,
                 ConsoleMsg.ConsoleIdCount);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Write ConsoleIdCount so that LxBus client can unmarshal it
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -374,7 +374,7 @@ LxBusServer(ILxssUserSession* wslSession,
     //
     LXBUS_IPC_CONNECTION_CREATE_UNNAMED_SERVER_MSG UnnamedServerMsg = { 0 };
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -388,10 +388,10 @@ LxBusServer(ILxssUserSession* wslSession,
                 UnnamedServerMsg.ServerPortIdCount);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Write ServerPortIdCount so that LxBus client can unmarshal it
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,
@@ -410,15 +410,15 @@ LxBusServer(ILxssUserSession* wslSession,
     //
     ULONG Privilege = 3;
     PULONG_PTR ReturnedState = NULL;
-    Status = RtlAcquirePrivilege(&Privilege, 1, 0, &ReturnedState);
+    Status = RtlAcquirePrivilege(&Privilege, 1, 0, (PVOID*)&ReturnedState);
     LogStatus(Status, L"RtlAcquirePrivilege");
     if (Status == STATUS_PRIVILEGE_NOT_HELD)
-        wprintf(L"Enable \"Replace a process level token\" privilege in Group Policy...\n");
+        wprintf(L"Enable \"Replace a process level token\" privilege in Local Security Policy...\n");
 
     LXBUS_IPC_CONNECTION_MARSHAL_FORK_TOKEN_MSG TokenMsg = { 0 };
     TokenMsg.Handle = ToULong(*ReturnedState);
 
-    Status = ZwDeviceIoControlFile(ClientHandle,
+    Status = NtDeviceIoControlFile(ClientHandle,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -432,10 +432,10 @@ LxBusServer(ILxssUserSession* wslSession,
                 TokenMsg.TokenIdCount);
     }
     else
-        LogStatus(Status, L"ZwDeviceIoControlFile");
+        LogStatus(Status, L"NtDeviceIoControlFile");
 
     // Write TokenIdCount so that LxBus client can unmarshal it
-    Status = ZwWriteFile(ClientHandle,
+    Status = NtWriteFile(ClientHandle,
                          EventHandle,
                          NULL,
                          NULL,

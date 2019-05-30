@@ -99,7 +99,7 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
     {
         WaitMsg.Timeout = INFINITE;
 
-        Status = ZwDeviceIoControlFile(ServerHandle,
+        Status = NtDeviceIoControlFile(ServerHandle,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -141,24 +141,24 @@ InitializeInterop(HANDLE ServerHandle,
     HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Create an event to synchronize with wslhost.exe process
-    Status = ZwCreateEvent(&EventHandle,
+    Status = NtCreateEvent(&EventHandle,
                            EVENT_ALL_ACCESS,
                            NULL,
                            SynchronizationEvent,
                            FALSE);
-    LogStatus(Status, L"ZwCreateEvent");
+    LogStatus(Status, L"NtCreateEvent");
 
     bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
-    Status = ZwDuplicateObject(NtCurrentProcess(),
+    Status = NtDuplicateObject(NtCurrentProcess(),
                                NtCurrentProcess(),
                                NtCurrentProcess(),
                                &ProcHandle,
                                0,
                                OBJ_INHERIT,
                                DUPLICATE_SAME_ACCESS);
-    Status = ZwDuplicateObject(NtCurrentProcess(),
+    Status = NtDuplicateObject(NtCurrentProcess(),
                                ServerHandle,
                                NtCurrentProcess(),
                                &ServerHandleDup,
@@ -226,7 +226,10 @@ InitializeInterop(HANDLE ServerHandle,
                  ToULong(ProcHandle));
 
     PROCESS_INFORMATION ProcInfo;
+    RtlZeroMemory(&ProcInfo, sizeof ProcInfo);
+
     STARTUPINFOEXW SInfoEx;
+    RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
 
     RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
     SInfoEx.StartupInfo.cb = sizeof SInfoEx;
@@ -289,8 +292,6 @@ CreateLxProcess(ILxssUserSession* wslSession,
 {
     HRESULT hRes;
     HANDLE LxProcessHandle = NULL, ServerHandle = NULL;
-    GUID InitiatedDistroID, LxInstanceID;
-    PVOID socket = NULL;
     HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Console Window handle of current process (if any)
@@ -327,6 +328,10 @@ CreateLxProcess(ILxssUserSession* wslSession,
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
+    GUID InitiatedDistroID, LxInstanceID;
+    SOCKET s_in, s_out, s_err;
+    SOCKET IpcServerSocket;
+
     hRes = wslSession->lpVtbl->CreateLxProcess(
         wslSession,
         DistroID,
@@ -346,10 +351,10 @@ CreateLxProcess(ILxssUserSession* wslSession,
         &LxInstanceID,
         &LxProcessHandle,
         &ServerHandle,
-        &socket,
-        &socket,
-        &socket,
-        &socket);
+        &s_in,
+        &s_out,
+        &s_err,
+        &IpcServerSocket);
 
     if (SUCCEEDED(hRes))
     {
@@ -363,7 +368,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
         // Get NT side Process ID of CommandLine process
         LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
 
-        Status = ZwDeviceIoControlFile(LxProcessHandle,
+        Status = NtDeviceIoControlFile(LxProcessHandle,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -389,7 +394,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
             InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
 
             // Use the IOCTL to wait on the process to terminate
-            Status = ZwDeviceIoControlFile(LxProcessHandle,
+            Status = NtDeviceIoControlFile(LxProcessHandle,
                                            NULL,
                                            NULL,
                                            NULL,
@@ -401,7 +406,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
             if (NT_SUCCESS(Status))
                 wprintf(L"[+] WaitForSignalMsg.ExitStatus: %u\n", WaitForSignalMsg.ExitStatus);
             else
-                LogStatus(Status, L"ZwDeviceIoControlFile");
+                LogStatus(Status, L"NtDeviceIoControlFile");
         }
     }
     else

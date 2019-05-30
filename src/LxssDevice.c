@@ -17,7 +17,7 @@ void LxssDevice(void)
     ObjectAttributes.Attributes = OBJ_CASE_INSENSITIVE;
     ObjectAttributes.ObjectName = &ObjectName;
 
-    Status = ZwOpenFile(&LxssRootHandle,
+    Status = NtOpenFile(&LxssRootHandle,
                         FILE_WRITE_DATA,
                         &ObjectAttributes,
                         &IoStatusBlock,

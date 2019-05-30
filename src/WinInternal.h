@@ -275,6 +275,13 @@ typedef struct _IO_STATUS_BLOCK {
     ULONG_PTR Information;
 } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
 
+typedef
+VOID
+(NTAPI* PIO_APC_ROUTINE) (
+    IN PVOID ApcContext,
+    IN PIO_STATUS_BLOCK IoStatusBlock,
+    IN ULONG Reserved);
+
 typedef struct _FILE_FS_DEVICE_INFORMATION {
     ULONG DeviceType;
     ULONG Characteristics;
@@ -296,7 +303,7 @@ typedef enum _FSINFOCLASS {
     FileFsMetadataSizeInformation,
     FileFsFullSizeInformationEx,
     FileFsMaximumInformation
-} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
+} FSINFOCLASS, *PFSINFOCLASS;
 
 typedef struct _PROCESS_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
@@ -311,100 +318,78 @@ typedef enum _PROCESSINFOCLASS {
     ProcessBasicInformation = 0
 } PROCESSINFOCLASS;
 
-NTSTATUS
-NTAPI
-NtClose(HANDLE Handle);
-
-NTSTATUS ZwQueryInformationProcess(
-    _In_ HANDLE ProcessHandle,
-    _In_ PROCESSINFOCLASS ProcessInformationClass,
-    _In_ PVOID ProcessInformation,
-    _In_ ULONG ProcessInformationLength,
-    _Out_opt_ PULONG ReturnLength);
-
-NTSTATUS ZwQueryVolumeInformationFile(
-    _In_ HANDLE FileHandle,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
-    _Out_ PVOID FsInformation,
-    _In_ ULONG Length,
-    _In_ FS_INFORMATION_CLASS FsInformationClass);
-
-NTSTATUS ZwOpenFile(
-    _Out_ PHANDLE FileHandle,
-    _In_ ACCESS_MASK DesiredAccess,
-    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
-    _In_ ULONG ShareAccess,
-    _In_ ULONG OpenOptions);
-
-NTSTATUS ZwReadFile(
-    _In_ HANDLE FileHandle,
-    _In_opt_ HANDLE Event,
-    _In_opt_ PVOID ApcRoutine,
-    _In_opt_ PVOID ApcContext,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
-    _Out_ PVOID Buffer,
-    _In_ ULONG Length,
-    _In_opt_ PLARGE_INTEGER ByteOffset,
-    _In_opt_ PULONG Key);
-
-NTSTATUS ZwWriteFile(
-    _In_ HANDLE FileHandle,
-    _In_opt_ HANDLE Event,
-    _In_opt_ PVOID ApcRoutine,
-    _In_opt_ PVOID ApcContext,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
-    _Out_ PVOID Buffer,
-    _In_ ULONG Length,
-    _In_opt_ PLARGE_INTEGER ByteOffset,
-    _In_opt_ PULONG Key);
-
-NTSTATUS ZwCancelIoFileEx(
-    _In_ HANDLE FileHandle,
-    _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock);
-
-NTSTATUS ZwDeviceIoControlFile(
-    _In_ HANDLE FileHandle,
-    _In_opt_ HANDLE Event,
-    _In_opt_ PVOID ApcRoutine,
-    _In_opt_ PVOID ApcContext,
-    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
-    _In_ ULONG IoControlCode,
-    _In_opt_ PVOID InputBuffer,
-    _In_ ULONG InputBufferLength,
-    _Out_opt_ PVOID OutputBuffer,
-    _In_ ULONG OutputBufferLength);
-
 typedef enum _EVENT_TYPE {
     NotificationEvent,
     SynchronizationEvent
 } EVENT_TYPE;
 
-NTSTATUS ZwCreateEvent(
+typedef enum _WAIT_TYPE {
+    WaitAll,
+    WaitAny,
+    WaitNotification
+} WAIT_TYPE;
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCancelIoFileEx(
+    _In_ HANDLE FileHandle,
+    _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock);
+
+NTSTATUS
+NTAPI
+NtClose(
+    _In_ HANDLE Handle);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateEvent(
     _Out_ PHANDLE EventHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
     _In_ EVENT_TYPE EventType,
     _In_ BOOLEAN InitialState);
 
-NTSTATUS ZwCreateNamedPipeFile(
-    _Out_ PHANDLE NamedPipeFileHandle,
-    _In_ ACCESS_MASK DesiredAccess,
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateNamedPipeFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ULONG DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _In_ ULONG ShareAccess,
     _In_ ULONG CreateDisposition,
     _In_ ULONG CreateOptions,
-    _In_ ULONG WriteModeMessage,
-    _In_ ULONG ReadModeMessage,
-    _In_ ULONG NonBlocking,
-    _In_ ULONG MaxInstances,
-    _In_ ULONG InBufferSize,
-    _In_ ULONG OutBufferSize,
-    _In_ PLARGE_INTEGER DefaultTimeOut);
+    _In_ ULONG NamedPipeType,
+    _In_ ULONG ReadMode,
+    _In_ ULONG CompletionMode,
+    _In_ ULONG MaximumInstances,
+    _In_ ULONG InboundQuota,
+    _In_ ULONG OutboundQuota,
+    _In_opt_ PLARGE_INTEGER DefaultTimeout);
 
-NTSTATUS ZwDuplicateObject(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtDeviceIoControlFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG IoControlCode,
+    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtDuplicateObject(
     _In_ HANDLE SourceProcessHandle,
     _In_ HANDLE SourceHandle,
     _In_opt_ HANDLE TargetProcessHandle,
@@ -413,120 +398,221 @@ NTSTATUS ZwDuplicateObject(
     _In_ ULONG HandleAttributes,
     _In_ ULONG Options);
 
-NTSTATUS ZwReadVirtualMemory(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG OpenOptions);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryInformationProcess(
+    _In_ HANDLE ProcessHandle,
+    _In_ PROCESSINFOCLASS ProcessInformationClass,
+    _Out_writes_bytes_(ProcessInformationLength) PVOID ProcessInformation,
+    _In_ ULONG ProcessInformationLength,
+    _Out_opt_ PULONG ReturnLength);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryVolumeInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FsInformation,
+    _In_ ULONG Length,
+    _In_ FSINFOCLASS FsInformationClass);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtReadFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key);
+
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtReadVirtualMemory(
     _In_ HANDLE ProcessHandle,
     _In_opt_ PVOID BaseAddress,
-    _In_ PVOID Buffer,
+    _Out_writes_bytes_(BufferSize) PVOID Buffer,
     _In_ SIZE_T BufferSize,
     _Out_opt_ PSIZE_T NumberOfBytesRead);
 
+NTSYSCALLAPI
 NTSTATUS
 NTAPI
-NtSetEvent(HANDLE EventHandle,
-           PLONG PreviousState);
+NtSetEvent(
+    _In_ HANDLE EventHandle,
+    _Out_opt_ PLONG PreviousState);
 
-typedef enum _WAIT_TYPE {
-    WaitAll,
-    WaitAny,
-    WaitNotification
-} WAIT_TYPE;
-
+NTSYSCALLAPI
 NTSTATUS
 NTAPI
-NtWaitForSingleObject(HANDLE Handle,
-                      BOOLEAN Alertable,
-                      PLARGE_INTEGER Timeout);
+NtWaitForMultipleObjects(
+    _In_ ULONG Count,
+    _In_reads_(Count) HANDLE Handles[],
+    _In_ WAIT_TYPE WaitType,
+    _In_ BOOLEAN Alertable,
+    _In_opt_ PLARGE_INTEGER Timeout);
 
+NTSYSCALLAPI
 NTSTATUS
 NTAPI
-NtWaitForMultipleObjects(ULONG Count, 
-                         HANDLE Handles[],
-                         WAIT_TYPE WaitType,
-                         BOOLEAN Alertable,
-                         PLARGE_INTEGER Timeout);
+NtWaitForSingleObject(
+    _In_ HANDLE Handle,
+    _In_ BOOLEAN Alertable,
+    _In_opt_ PLARGE_INTEGER Timeout);
 
+NTSYSCALLAPI
 NTSTATUS
 NTAPI
-TpAllocWork(PTP_WORK *WorkReturn,
-            PTP_WORK_CALLBACK Callback,
-            PVOID Context,
-            PTP_CALLBACK_ENVIRON CallbackEnviron);
+NtWriteFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key);
 
-void
-NTAPI
-TpPostWork(PTP_WORK Work);
-
-void
-NTAPI
-TpReleaseWork(PTP_WORK Work);
-
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlAcquirePrivilege(PULONG Privilege,
-                    ULONG NumPriv,
-                    ULONG Flags,
-                    PULONG_PTR* ReturnedState);
+RtlAcquirePrivilege(
+    _In_ PULONG Privilege,
+    _In_ ULONG NumPriv,
+    _In_ ULONG Flags,
+    _Out_ PVOID* ReturnedState);
 
-NTSTATUS
-NTAPI
-RtlAnsiStringToUnicodeString(PUNICODE_STRING DestinationString,
-                             PANSI_STRING SourceString,
-                             BOOLEAN AllocateDestinationString);
-
+NTSYSAPI
 PVOID
 NTAPI
-RtlAllocateHeap(PVOID HeapHandle,
-                ULONG Flags,
-                SIZE_T Size);
+RtlAllocateHeap(
+    _In_ PVOID HeapHandle,
+    _In_opt_ ULONG Flags,
+    _In_ SIZE_T Size);
 
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlAnsiStringToUnicodeString(
+    _Inout_ PUNICODE_STRING DestinationString,
+    _In_ PANSI_STRING SourceString,
+    _In_ BOOLEAN AllocateDestinationString);
+
+NTSYSAPI
+VOID
+NTAPI
+RtlDeleteCriticalSection(
+    _Inout_ LPCRITICAL_SECTION lpCriticalSection);
+
+NTSYSAPI
 BOOLEAN
 NTAPI
-RtlFreeHeap(PVOID HeapHandle,
-            ULONG Flags,
-            PVOID BaseAddress);
+RtlFreeHeap(
+    _In_ PVOID HeapHandle,
+    _In_opt_ ULONG Flags,
+    _In_ PVOID BaseAddress);
 
-void
+NTSYSAPI
+VOID
 NTAPI
-RtlFreeUnicodeString(PUNICODE_STRING UnicodeString);
+RtlFreeUnicodeString(
+    _In_ PUNICODE_STRING UnicodeString);
 
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlGUIDFromString(PUNICODE_STRING GuidString,
-                  GUID* Guid);
+RtlGUIDFromString(
+    _In_ PUNICODE_STRING GuidString,
+    _Out_ GUID* Guid);
 
-void
-NTAPI
-RtlReleasePrivilege(PULONG_PTR ReturnedState);
-
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlStringFromGUID(GUID* Guid,
-                  PUNICODE_STRING GuidString);
+RtlInitAnsiStringEx(
+    _Out_ PANSI_STRING DestinationString,
+    _In_opt_z_ PSTR SourceString);
 
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlInitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,
-                               DWORD dwSpinCount,
-                               DWORD Flags);
+RtlInitializeCriticalSectionEx(
+    _Out_ LPCRITICAL_SECTION lpCriticalSection,
+    _In_ DWORD dwSpinCount,
+    _In_ DWORD Flags);
 
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlInitAnsiStringEx(PANSI_STRING DestinationString,
-                    PSTR SourceString);
+RtlInitUnicodeStringEx(
+    _Out_ PUNICODE_STRING DestinationString,
+    _In_opt_ PWSTR SourceString);
 
+NTSYSAPI
+VOID
+NTAPI
+RtlReleasePrivilege(
+    _In_ PVOID StatePointer);
+
+NTSYSAPI
 NTSTATUS
 NTAPI
-RtlInitUnicodeStringEx(PUNICODE_STRING DestinationString,
-                       PCWSTR SourceString);
-
-void
-NTAPI
-RtlDeleteCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+RtlStringFromGUID(
+    _In_ GUID* Guid,
+    _Out_ PUNICODE_STRING GuidString);
 
 #undef RtlZeroMemory
-void
+NTSYSAPI
+VOID
 NTAPI
-RtlZeroMemory(PVOID Destination,
-              SIZE_T Length);
+RtlZeroMemory(
+    _In_ PVOID Destination,
+    _In_ SIZE_T Length);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+TpAllocWork(
+    _Out_ PTP_WORK* WorkReturn,
+    _In_ PTP_WORK_CALLBACK Callback,
+    _Inout_opt_ PVOID Context,
+    _In_opt_ PTP_CALLBACK_ENVIRON CallbackEnviron);
+
+NTSYSAPI
+VOID
+NTAPI
+TpPostWork(
+    _Inout_ PTP_WORK Work);
+
+NTSYSAPI
+VOID
+NTAPI
+TpReleaseWork(
+    _Inout_ PTP_WORK Work);
+
+NTSYSAPI
+VOID
+NTAPI
+TpWaitForWork(
+    _Inout_ PTP_WORK Work,
+    _In_ BOOLEAN CancelPendingCallbacks);
 
 #endif // WININTERNAL_H

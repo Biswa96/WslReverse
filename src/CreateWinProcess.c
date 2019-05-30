@@ -49,7 +49,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
 
         // Cast hpCon to an internal structure for ConHost PID
         RtlZeroMemory(&BasicInfo, sizeof BasicInfo);
-        Status = ZwQueryInformationProcess(((PX_HPCON)hpCon)->hConHostProcess,
+        Status = NtQueryInformationProcess(((PX_HPCON)hpCon)->hConHostProcess,
                                            ProcessBasicInformation,
                                            &BasicInfo,
                                            sizeof BasicInfo,
@@ -62,7 +62,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
                     BasicInfo.UniqueProcessId, ((PX_HPCON)hpCon)->hConHostProcess);
         }
         else
-            LogStatus(Status, L"ZwQueryInformationProcess");
+            LogStatus(Status, L"NtQueryInformationProcess");
 
         if(AttrList)
             bRes = UpdateProcThreadAttribute(AttrList,
@@ -132,12 +132,12 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
     else
         LogResult(RtlGetLastWin32Error(), L"CreateWinProcess");
 
-    Status = ZwQueryInformationProcess(ProcResult->ProcInfo.hProcess,
+    Status = NtQueryInformationProcess(ProcResult->ProcInfo.hProcess,
                                        ProcessBasicInformation,
                                        &BasicInfo,
                                        sizeof BasicInfo,
                                        NULL);
-    LogStatus(Status, L"ZwQueryInformationProcess");
+    LogStatus(Status, L"NtQueryInformationProcess");
 
     if (NT_SUCCESS(Status))
     {
@@ -145,7 +145,7 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
         SIZE_T NumberOfBytesRead = 0;
 
         RtlZeroMemory(&Peb, sizeof Peb);
-        Status = ZwReadVirtualMemory(ProcResult->ProcInfo.hProcess,
+        Status = NtReadVirtualMemory(ProcResult->ProcInfo.hProcess,
                                      BasicInfo.PebBaseAddress,
                                      &Peb,
                                      sizeof Peb,
@@ -153,12 +153,12 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
 
         if (NT_SUCCESS(Status))
         {
-            wprintf(L"[+] ZwReadVirtualMemory \n\t"
+            wprintf(L"[+] NtReadVirtualMemory \n\t"
                     L" NumberOfBytesRead: %zu \n\t OSMajorVersion: %lu\n",
                     NumberOfBytesRead, Peb.OSMajorVersion);
         }
         else
-            LogStatus(Status, L"ZwReadVirtualMemory");
+            LogStatus(Status, L"NtReadVirtualMemory");
 
         // From IMAGE_OPTIONAL_HEADER structure
         if (Peb.ImageSubsystem == IMAGE_SUBSYSTEM_WINDOWS_GUI)
