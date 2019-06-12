@@ -13,23 +13,27 @@ static const GUID IID_ILxssUserSession = {
     0x41D9,
     { 0xB9, 0x78, 0xDC, 0xAC, 0xA9, 0xA9, 0xB5, 0xB9 } };
 
-typedef enum _WSL_DISTRIBUTION_STATES {
-    DistroStateAll = 0,
-    Installed = 1,          // LxssUserSession::_SetDistributionInstalled
-    ToBeInstall = 2,        // LxssUserSession::_RegisterDistributionCommon
-    DistroStateRunning = 2,
-    Installing = 3,         // LxssUserSession::_CreateDistributionRegistration
-    Uninstalling = 4,       // LxssUserSession::UnregisterDistribution
-    Upgrading = 5           // LxssUserSession::BeginUpgradeDistribution
-} WSL_DISTRIBUTION_STATES;
+typedef enum _LXSS_DISTRIBUTION_STATES {
+    Stopped = 1,
+    Running,
+    Installing,
+    Uninstalling,
+    Converting
+} LXSS_DISTRIBUTION_STATES;
+
+typedef struct _LXSS_ENUMERATE_INFO {
+    GUID DistributionID;
+    LXSS_DISTRIBUTION_STATES State;
+    ULONG Version;
+    ULONG Default;
+} LXSS_ENUMERATE_INFO, *PLXSS_ENUMERATE_INFO;
 
 typedef enum _WSL_DISTRIBUTION_FLAGS {
     WSL_DISTRIBUTION_FLAGS_NONE = 0,
     WSL_DISTRIBUTION_FLAGS_ENABLE_INTEROP = 1,
     WSL_DISTRIBUTION_FLAGS_APPEND_NT_PATH = 2,
     WSL_DISTRIBUTION_FLAGS_ENABLE_DRIVE_MOUNTING = 4,
-    WSL_DISTRIBUTION_FLAGS_DEFAULT = 7,
-    WSL_DISTRIBUTION_FLAGS_VM_MODE = 8
+    WSL_DISTRIBUTION_FLAGS_DEFAULT = 7
 } WSL_DISTRIBUTION_FLAGS;
 
 typedef struct _LXSS_STD_HANDLE {
@@ -50,7 +54,7 @@ struct _ILxssUserSessionVtbl
     HRESULT(STDMETHODCALLTYPE *QueryInterface)(
         _In_ ILxssUserSession* wslSession,
         _In_ GUID* riid,
-        _Out_ PVOID *ppv);
+        _Out_ PVOID* ppv);
 
     ULONG(STDMETHODCALLTYPE *AddRef)(
         _In_ ILxssUserSession* This);
@@ -66,33 +70,28 @@ struct _ILxssUserSessionVtbl
     HRESULT(STDMETHODCALLTYPE *CreateInstance)(
         _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
-        _In_opt_ ULONG InitializeFlag);
+        _In_ ULONG InitializeCount);
 
     /**
     * PVOID ObjectStublessClient4;
-    * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -x -p --xattrs --no-acls -f -"
-    * Write State to THREE means installing
-    * State Must be TWO for newer installation
+    * Command: "System32/lxss/tools/bsdtar -C /rootfs -x -p --xattrs --no-acls -f -"
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
         _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
-        _In_ ULONG State,
+        _In_ ULONG RegistrationFlags,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
-        _In_ GUID* DistroId);
+        _Out_ GUID* DistroId);
 
-    /**
-    * PVOID ObjectStublessClient5;
-    * RPC_S_CANNOT_SUPPORT The requested operation is not supported.
-    **/
+    /* PVOID ObjectStublessClient5; */
     HRESULT(STDMETHODCALLTYPE *RegisterDistributionFromPipe)(
         _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
-        _In_ ULONG State,
+        _In_ ULONG RegistrationFlags,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
-        _In_ GUID* DistroId);
+        _Out_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient6;
@@ -102,13 +101,12 @@ struct _ILxssUserSessionVtbl
     HRESULT(STDMETHODCALLTYPE *GetDistributionId)(
         _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistroName,
-        _In_ WSL_DISTRIBUTION_STATES DistroState,
+        _In_ ULONG EnableEnumerate,
         _Out_ GUID* DistroId);
 
     /**
     * PVOID ObjectStublessClient7;
     * If DistroId is NULL it will be default distribution
-    * Use IServerSecurity interface and terminates any process
     **/
     HRESULT(STDMETHODCALLTYPE *TerminateDistribution)(
         _In_ ILxssUserSession* wslSession,
@@ -137,11 +135,7 @@ struct _ILxssUserSessionVtbl
         _In_opt_ PCSTR* DefaultEnvironment,
         _In_ ULONG Flags);
 
-    /**
-    * PVOID ObjectStublessClient10;
-    * Enumerate all value in Lxss\DistroId registry key
-    * Query CurrentControlSet\services\LxssManager\DistributionFlags
-    **/
+    /* PVOID ObjectStublessClient10; */
     HRESULT(STDMETHODCALLTYPE *GetDistributionConfiguration)(
         _In_ ILxssUserSession* wslSession,
         _In_ GUID* DistroId,
@@ -174,19 +168,14 @@ struct _ILxssUserSessionVtbl
 
     /**
     * PVOID ObjectStublessClient13;
-    * Query State registry value should be ONE
-    * Returns GUID list in 16 bytes offsets
+    * Free allocated memory with CoTaskMemFree
     **/
     HRESULT(STDMETHODCALLTYPE *EnumerateDistributions)(
         _In_ ILxssUserSession* wslSession,
-        _In_ WSL_DISTRIBUTION_STATES DistroState,
         _Out_ PULONG DistroCount,
-        _Out_ GUID** DistroIdList);
+        _Out_ PLXSS_ENUMERATE_INFO* DistroInfo);
 
-    /**
-    * PVOID ObjectStublessClient14;
-    * Related with hidden WSL_VM_Mode feature
-    **/
+    /* PVOID ObjectStublessClient14; */
     HRESULT(STDMETHODCALLTYPE *CreateLxProcess)(
         _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
@@ -233,7 +222,7 @@ struct _ILxssUserSessionVtbl
 
     /**
     * PVOID ObjectStublessClient17;
-    * Command: "/tools/Windows/System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
+    * Command: "System32/lxss/tools/bsdtar -C /rootfs -c --one-file-system --xattrs -f - ."
     **/
     HRESULT(STDMETHODCALLTYPE *ExportDistribution)(
         _In_ ILxssUserSession* wslSession,
@@ -249,6 +238,9 @@ struct _ILxssUserSessionVtbl
         _In_ GUID* DistroId,
         _In_ HANDLE FileHandle);
 
+    /* PVOID ObjectStublessClient19; */
+    HRESULT(STDMETHODCALLTYPE *Shutdown)(
+        _In_ ILxssUserSession *wslSession);
 };
 
 struct _ILxssUserSession

@@ -11,6 +11,10 @@ void
 WINAPI
 LogStatus(NTSTATUS Status, PWSTR Function);
 
+void
+WINAPI
+Log(HRESULT Result, PWSTR Function);
+
 NTSTATUS
 NTAPI
 MbsToWcs(PSTR src, PUNICODE_STRING dst);

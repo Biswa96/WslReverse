@@ -7,33 +7,44 @@
 #include "wgetopt.h"
 #include <stdio.h>
 
-int
-WINAPI
-main(void)
+int WINAPI main(void)
 {
     int wargc;
     PWSTR* wargv = CommandLineToArgvW(RtlGetCommandLineW(), &wargc);
 
     if (wargc < 2)
     {
+        LocalFree(wargv);
         wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
-        return 0;
+        return 1;
     }
 
-    // Declare variables
+    /* Declare variables */
     int c;
-    HRESULT hRes = 0;
+    HRESULT hRes = E_FAIL;
+    PWSTR BasePath, DistributionName, TarFilePath;
+    PSTR KernelCommandLine, *DefaultEnvironment;
     ULONG Version, DefaultUid, Flags, EnvironmentCount;
-    GUID DistroId = { 0 }, DefaultDistroId = { 0 };
-    UNICODE_STRING GuidString;
-    RtlZeroMemory(&GuidString, sizeof GuidString);
+    GUID DistroId = { 0 };
+    UNICODE_STRING GuidString = { 0 };
 
     HANDLE hTarFile = NULL;
     ILxssUserSession* wslSession = NULL;
 
-    // Option table
-    const wchar_t* OptionString = L"b:d:e:Gg:hi:lr:S:s:t:u:x";
+    hRes = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    hRes = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT,
+                                SecurityDelegation, NULL, EOAC_STATIC_CLOAKING, NULL);
+    hRes = CoCreateInstance(&CLSID_LxssUserSession,
+                            NULL,
+                            CLSCTX_LOCAL_SERVER,
+                            &IID_ILxssUserSession,
+                            (PVOID*)&wslSession);
 
+    LogResult(hRes, L"CoCreateInstance");
+    if (FAILED(hRes))
+        return 1;
+
+    /* Option table */
     const struct option OptionTable[] = {
         { L"bus",           required_argument,   0,  'b' },
         { L"get-id",        required_argument,   0,  'd' },
@@ -51,21 +62,9 @@ main(void)
         { L"xpert",         no_argument,         0,  'x' },
         { 0,                no_argument,         0,   0  },
     };
+    const wchar_t* OptionString = L"b:d:e:Gg:hi:lr:S:s:t:u:x";
 
-    hRes = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-    hRes = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT,
-                                SecurityDelegation, NULL, EOAC_STATIC_CLOAKING, NULL);
-    hRes = CoCreateInstance(&CLSID_LxssUserSession,
-                            NULL,
-                            CLSCTX_LOCAL_SERVER,
-                            &IID_ILxssUserSession,
-                            (PVOID*)&wslSession);
-
-    LogResult(hRes, L"CoCreateInstance");
-    if (FAILED(hRes))
-        return 0;
-
-    // Option parsing
+    /* Option parsing */
     while ((c = wgetopt_long(wargc, wargv, OptionString, OptionTable, 0)) != -1)
     {
         switch (c)
@@ -78,29 +77,27 @@ main(void)
         }
         case 'b':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, DistroStateAll, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
 
             hRes = wslSession->lpVtbl->CreateInstance(wslSession, &DistroId, 0);
             LogResult(hRes, L"CreateInstance");
             if (hRes < 0)
-                return hRes;
+                return 1;
             hRes = LxBusServer(wslSession, &DistroId);
             break;
         }
         case 'd':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, DistroStateAll, &DefaultDistroId);
-            RtlStringFromGUID(&DefaultDistroId, &GuidString);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
+            RtlStringFromGUID(&DistroId, &GuidString);
             LogResult(hRes, L"GetDistributionId");
             wprintf(L"%ls: %ls\n", optarg, GuidString.Buffer);
             break;
         }
         case 'e':
         {
-            WCHAR TarFilePath[MAX_PATH];
-            wprintf(L"Enter filename or full path of exported tar file (without quote): ");
-            wscanf_s(L"%ls", TarFilePath, MAX_PATH);
+            TarFilePath = wargv[3];
 
             hTarFile = CreateFileW(TarFilePath,
                                    GENERIC_WRITE,
@@ -110,11 +107,11 @@ main(void)
                                    FILE_ATTRIBUTE_NORMAL,
                                    NULL);
 
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
 
             if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
             {
-                // hTarFile = GetStdHandle(STD_OUTPUT_HANDLE)
+                hTarFile = GetStdHandle(STD_OUTPUT_HANDLE);
                 hRes = wslSession->lpVtbl->ExportDistributionFromPipe(wslSession, &DistroId, hTarFile);
                 LogResult(hRes, L"ExportDistributionFromPipe");
             }
@@ -136,16 +133,12 @@ main(void)
         }
         case 'g':
         {
-            PWSTR DistributionName, BasePath;
-            PSTR KernelCommandLine;
-            PSTR* DefaultEnvironment = NULL;
-
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
 
             hRes = wslSession->lpVtbl->GetDistributionConfiguration(
-                wslSession, &DistroId, &DistributionName, &Version, &BasePath,
-                &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
+                   wslSession, &DistroId, &DistributionName, &Version, &BasePath,
+                   &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
             LogResult(hRes, L"GetDistributionConfiguration");
 
             wprintf(L"\n Distribution Name: %ls\n Version: %lu\n BasePath: %ls\n KernelCommandLine: %hs\n"
@@ -159,16 +152,24 @@ main(void)
             Usage();
             break;
         }
+
+        /* Install */
         case 'i':
         {
-            wchar_t TarFilePath[MAX_PATH], BasePath[MAX_PATH];
-            wprintf(L"Enter full path of .tar.gz file (without quote): ");
-            wscanf_s(L"%ls", TarFilePath, MAX_PATH);
+            if (wargc < 5)
+            {
+                wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
+                break;
+            }
 
-            wprintf(L"Enter folder path where to install (without quote): ");
-            wscanf_s(L"%ls", BasePath, MAX_PATH);
+            BasePath = wargv[3], TarFilePath = wargv[4];
 
-            hRes = CoCreateGuid(&DistroId);
+
+            if (!CreateDirectoryW(BasePath, NULL) && RtlGetLastWin32Error() != ERROR_ALREADY_EXISTS)
+            {
+                wprintf(L"Provided path is not valid.\n");
+                break;
+            }
 
             hTarFile = CreateFileW(TarFilePath,
                                    GENERIC_READ,
@@ -178,73 +179,73 @@ main(void)
                                    FILE_ATTRIBUTE_NORMAL,
                                    NULL);
 
-            if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
+            if (hTarFile != INVALID_HANDLE_VALUE)
             {
-                // hTarFile = GetStdHandle(STD_INPUT_HANDLE)
-                hRes = wslSession->lpVtbl->RegisterDistributionFromPipe(
-                    wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
-                LogResult(hRes, L"RegisterDistributionFromPipe");
+                if (GetFileType(hTarFile) == FILE_TYPE_PIPE)
+                {
+                    hTarFile = GetStdHandle(STD_INPUT_HANDLE);
+                    hRes = wslSession->lpVtbl->RegisterDistributionFromPipe(
+                           wslSession, optarg, 0, hTarFile, BasePath, &DistroId);
+                    LogResult(hRes, L"RegisterDistributionFromPipe");
+                }
+                else
+                {
+                    hRes = wslSession->lpVtbl->RegisterDistribution(
+                           wslSession, optarg, 0, hTarFile, BasePath, &DistroId);
+                    LogResult(hRes, L"RegisterDistribution");
+                }
+
+                if (SUCCEEDED(hRes))
+                {
+                    RtlStringFromGUID(&DistroId, &GuidString);
+                    wprintf(L"Distribution ID: %ls\n", GuidString.Buffer);
+                    wprintf(L"Install Finished.\n");
+                }
             }
             else
             {
-                hRes = wslSession->lpVtbl->RegisterDistribution(
-                    wslSession, optarg, ToBeInstall, hTarFile, BasePath, &DistroId);
-                LogResult(hRes, L"RegisterDistribution");
+                Log(RtlGetLastWin32Error(), L"CreateFileW");
             }
-
-            if(hRes == S_OK)
-                wprintf(L"Install Finished.\n");
             break;
         }
+
+        /* List */
         case 'l':
         {
-            GUID* DistroIdList = NULL;
-            ULONG DistroCount = 0;
-            hRes = wslSession->lpVtbl->GetDefaultDistribution(wslSession, &DefaultDistroId);
-            hRes = wslSession->lpVtbl->EnumerateDistributions(wslSession, DistroStateAll, &DistroCount, &DistroIdList);
+            ULONG DistroCount;
+            PLXSS_ENUMERATE_INFO DistroInfo = NULL, tDistroInfo = NULL;
+            hRes = wslSession->lpVtbl->EnumerateDistributions(wslSession, &DistroCount, &DistroInfo);
 
             if (DistroCount)
             {
-                ULONG i = 0;
-                PWSTR DistributionName, BasePath;
-                PSTR KernelCommandLine;
-                PSTR* DefaultEnvironment = NULL;
-
+                tDistroInfo = DistroInfo;
                 wprintf(L"\nWSL Distributions:\n");
-                do
+                for (ULONG i = 0; i < DistroCount; i++)
                 {
-                    DistroId = DistroIdList[i];
-                    if (DistroId.Data1 == DefaultDistroId.Data1 &&
-                        (DistroId.Data4 - DefaultDistroId.Data4))
-                    {
-                        hRes = wslSession->lpVtbl->GetDistributionConfiguration(
-                            wslSession, &DistroId, &DistributionName, &Version, &BasePath,
-                            &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
+                    hRes = wslSession->lpVtbl->GetDistributionConfiguration(
+                           wslSession, &DistroInfo->DistributionID, &DistributionName, &Version, &BasePath,
+                           &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
 
-                        RtlStringFromGUID(&DistroId, &GuidString);
+                    RtlStringFromGUID(&DistroInfo->DistributionID, &GuidString);
+
+                    if (DistroInfo->Default)
                         wprintf(L"%ls : %ls (Default)\n", GuidString.Buffer, DistributionName);
-                    }
                     else
-                    {
-                        hRes = wslSession->lpVtbl->GetDistributionConfiguration(
-                            wslSession, &DistroId, &DistributionName, &Version, &BasePath,
-                            &KernelCommandLine, &DefaultUid, &EnvironmentCount, &DefaultEnvironment, &Flags);
-
-                        RtlStringFromGUID(&DistroId, &GuidString);
                         wprintf(L"%ls : %ls\n", GuidString.Buffer, DistributionName);
-                    }
-                    ++i;
-                } while (i < DistroCount);
+
+                    RtlFreeUnicodeString(&GuidString);
+                    DistroInfo = (PLXSS_ENUMERATE_INFO)((PBYTE)DistroInfo + sizeof (*DistroInfo));
+                }
             }
             else
-            {
-                wprintf(L"No Distribution installed.\n");
-            }
+                wprintf(L"No Distribution Installed.\n");
+            if (tDistroInfo)
+                CoTaskMemFree(tDistroInfo);
             break;
         }
         case 'r':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
 
             PSTR Arguments[] = { "-bash" };
@@ -254,7 +255,7 @@ main(void)
         }
         case 'S':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
             hRes = wslSession->lpVtbl->SetDefaultDistribution(wslSession, &DistroId);
             LogResult(hRes, L"SetDefaultDistribution");
@@ -262,10 +263,10 @@ main(void)
         }
         case 's':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
-            PCSTR KernelCommandLine = "BOOT_IMAGE=/kernel init=/init ro";
-            PCSTR DefaultEnvironment[] = {
+            KernelCommandLine = "BOOT_IMAGE=/kernel init=/init";
+            PCSTR Environment[4] = {
                 "HOSTTYPE=x86_64",
                 "LANG=en_US.UTF-8",
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games",
@@ -273,27 +274,31 @@ main(void)
             };
 
             hRes = wslSession->lpVtbl->ConfigureDistribution(
-                wslSession, &DistroId, KernelCommandLine, 0,
-                ARRAY_SIZE(DefaultEnvironment), DefaultEnvironment, WSL_DISTRIBUTION_FLAGS_DEFAULT);
+                   wslSession, &DistroId, KernelCommandLine, 0,
+                   ARRAY_SIZE(Environment), Environment, WSL_DISTRIBUTION_FLAGS_DEFAULT);
             LogResult(hRes, L"ConfigureDistribution");
+            if (hRes == ERROR_SUCCESS)
+                wprintf(L"%ls configured successfully.\n", optarg);
             break;
         }
         case 't':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
             hRes = wslSession->lpVtbl->TerminateDistribution(wslSession, &DistroId);
             LogResult(hRes, L"TerminateDistribution");
             if (hRes == ERROR_SUCCESS)
-                wprintf(L"Distribution terminated successfully.\n");
+                wprintf(L"%ls terminated successfully.\n", optarg);
             break;
         }
         case 'u':
         {
-            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, Installed, &DistroId);
+            hRes = wslSession->lpVtbl->GetDistributionId(wslSession, optarg, FALSE, &DistroId);
             LogResult(hRes, L"GetDistributionId");
             hRes = wslSession->lpVtbl->UnregisterDistribution(wslSession, &DistroId);
             LogResult(hRes, L"UnregisterDistribution");
+            if (hRes == ERROR_SUCCESS)
+                wprintf(L"%ls uninstalled successfully.\n", optarg);
             break;
         }
         case 'x':
@@ -313,5 +318,6 @@ main(void)
         NtClose(hTarFile);
     hRes = wslSession->lpVtbl->Release(wslSession);
     CoUninitialize();
+    LocalFree(wargv);
     return 0;
 }

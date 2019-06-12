@@ -4,7 +4,7 @@
 [![Top Language](https://img.shields.io/github/languages/top/Biswa96/WslReverse.svg)](https://github.com/Biswa96/WslReverse.git)
 [![Code size](https://img.shields.io/github/languages/code-size/Biswa96/WslReverse.svg)]()
 
-Reveal hidden COM interface between WSL and Lxss Manager Service.
+Experiments with hidden COM interface and LxBus IPC mechanism in WSL.
 Heavily inspired by kernel guru **Alex Ionescu's project [lxss]**.
 This project is just a concept, not a fully developed program and
 should be used for testing purposes. 
@@ -24,26 +24,30 @@ cloned folder and run `make` command. The binaries will be in `/bin` folder.
 Download the binary from [Release page], no installation steps are required.
 This project only shows the hidden COM methods which may change in future
 Windows version. The COM vtable, used in this project, is according to
-_latest Windows 10 20H1 Insider Preview_. Here are the options of WslReverse: 
+_latest Windows 10 20H1 Insider Preview_, that is build 18912 and above.
+Here are the options of WslReverse: 
 
 [Release page]: https://github.com/Biswa96/WslReverse/releases
 
 ```
 Usage: WslReverse.exe [-] [option] [argument]
+
 Options:
-    -b, --bus          [distribution name]      Create own LxBus server (as administrator).
-    -d, --get-id       [distribution name]      Get distribution GUID.
-    -e, --export       [distribution name]      Exports selected distribution to a tar file.
-    -G, --get-default                           Get default distribution GUID.
-    -g, --get-config   [distribution name]      Get distribution configuration.
-    -h, --help                                  Show list of options.
-    -i, --install      [distribution name]      Install distribution.
-    -l, --list                                  List all distributions with pending ones.
-    -r, --run          [distribution name]      Run bash in provided distribution.
-    -S, --set-default  [distribution name]      Set default distribution.
-    -s, --set-config   [distribution name]      Set configuration for distribution.
-    -t, --terminate    [distribution name]      Terminate running distribution.
-    -u, --uninstall    [distribution name]      Uninstall distribution.
+  -b, --bus          [Distro]      Create own LxBus server (as administrator).
+  -d, --get-id       [Distro]      Get distribution ID.
+  -e, --export       [Distro]  [File Name]
+                                   Exports selected distribution to a tar file.
+  -G, --get-default                Get default distribution ID.
+  -g, --get-config   [Distro]      Get distribution configuration.
+  -h, --help                       Show this help information.
+  -i, --install      [Distro]  [Install Folder]  [File Name]
+                                   Install tar file as a new distribution.
+  -l, --list                       List all distributions with pending ones.
+  -r, --run          [Distro]      Run bash in provided distribution.
+  -S, --set-default  [Distro]      Set default distribution.
+  -s, --set-config   [Distro]      Set configuration for distribution.
+  -t, --terminate    [Distro]      Terminate running distribution.
+  -u, --uninstall    [Distro]      Uninstall distribution.
 ```
 
 ## Project layout
@@ -73,11 +77,11 @@ src\
 
 ## Take a long ride with :minibus:
 
-To use LxBus, import the [Lxss_Service.REG](Others/Lxss_Service.REG) registry,
-reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c) with `make`
-in WSL. Execute WslRevese with `-b` or `--bus` option as administrator and
-LxBusClient as root user in WSL. Those two binaries exchange some messages between
-WSL and Windows side using LxBus via. LxCore driver. Here are some of them:
+To use LxBus, rename the [LxCoreFlags registry file](Others/LxCoreFlags.reg.ini) and
+import it. Then reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c)
+with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator
+and LxBusClient as root user in WSL. Those two binaries exchange some messages
+between WSL and Windows side using LxBus via. LxCore driver. Here are some of them:
 
 | Step No. | LxBus Server (as Administrator)          | LxBus Client (as root)                |
 |:--------:|:----------------------------------------:|:-------------------------------------:|
@@ -132,8 +136,8 @@ ELF backend or any extra modules which creates extra processes.
 
 ## License 
 
-This project is licensed under GNU Public License v3 or higher.
-You are free to study, modify or distribute the source code. 
+WslReverse is licensed under the GNU General Public License v3.
+A full copy of the license is provided in [LICENSE](LICENSE).
 
     WslReverse -- Use COM interface between WSL and Lxss Manager Service
     Copyright (c) 2018-19 Biswapriyo Nath
