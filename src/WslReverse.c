@@ -1,5 +1,4 @@
 #include "WinInternal.h"
-#include "LxssDevice.h"
 #include "LxssUserSession.h"
 #include "Helpers.h"
 #include "CreateLxProcess.h"
@@ -30,6 +29,9 @@ int WINAPI main(void)
 
     HANDLE hTarFile = NULL;
     ILxssUserSession* wslSession = NULL;
+
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 
     hRes = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     hRes = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT,
@@ -301,11 +303,6 @@ int WINAPI main(void)
                 wprintf(L"%ls uninstalled successfully.\n", optarg);
             break;
         }
-        case 'x':
-        {
-            LxssDevice();
-            break;
-        }
         default:
             wprintf(L"Try 'WslReverse.exe --help' for more information.\n");
         }
@@ -318,6 +315,7 @@ int WINAPI main(void)
         NtClose(hTarFile);
     hRes = wslSession->lpVtbl->Release(wslSession);
     CoUninitialize();
+    WSACleanup();
     LocalFree(wargv);
     return 0;
 }

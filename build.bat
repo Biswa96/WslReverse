@@ -10,7 +10,7 @@ set BINDIR=bin
 set SRCDIR=src
 set CFLAGS=/c /nologo /O1 /MD /W4 /Fo%BINDIR%\\
 set LFLAGS=/nologo /MACHINE:X64
-set LIBS=Ole32.lib Shell32.lib NtDll.lib
+set LIBS=ntdll.lib ole32.lib shell32.lib ws2_32.lib
 
 ::Disable warnings
 set CCOPT=/wd"4201" /wd"4214"

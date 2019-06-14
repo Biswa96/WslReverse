@@ -2,4 +2,6 @@
 
 exe:
 	cd src ; $(MAKE)
-#cd Others ; $(MAKE)
+
+clean:
+	cd src; $(MAKE) clean

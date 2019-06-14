@@ -8,17 +8,17 @@ NTSTATUS
 WINAPI
 WaitForMessage(HANDLE ClientHandle,
                HANDLE EventHandle,
-               PIO_STATUS_BLOCK IoStatusBlock)
+               PIO_STATUS_BLOCK IoRequestToCancel)
 {
     NTSTATUS Status;
-    IO_STATUS_BLOCK IoRequestToCancel;
+    IO_STATUS_BLOCK IoStatusBlock;
     LARGE_INTEGER Timeout;
     Timeout.QuadPart = -5 * TICKS_PER_MIN;
 
     Status = NtWaitForSingleObject(EventHandle, FALSE, &Timeout);
     if (Status == STATUS_TIMEOUT)
     {
-        NtCancelIoFileEx(ClientHandle, &IoRequestToCancel, IoStatusBlock);
+        NtCancelIoFileEx(ClientHandle, IoRequestToCancel, &IoStatusBlock);
         Status = NtWaitForSingleObject(EventHandle, FALSE, NULL);
     }
 
@@ -31,7 +31,7 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
                   PHANDLE WritePipeHandle)
 {
     NTSTATUS Status;
-    HANDLE hPipeServer = NULL, hNamedPipeFile = NULL, hFile = NULL;
+    HANDLE hPipeServer, hNamedPipeFile, hFile;
     LARGE_INTEGER DefaultTimeOut;
     IO_STATUS_BLOCK IoStatusBlock;
     UNICODE_STRING ObjectName;
@@ -46,7 +46,7 @@ OpenAnonymousPipe(PHANDLE ReadPipeHandle,
                               NULL);
 
     if (hPipeServer == INVALID_HANDLE_VALUE)
-        LogResult(RtlGetLastWin32Error(), L"CreateFileW");
+        Log(RtlGetLastWin32Error(), L"CreateFileW");
 
     DefaultTimeOut.QuadPart = -2 * TICKS_PER_MIN;
 
@@ -101,7 +101,8 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
     IO_STATUS_BLOCK IoStatusBlock;
     PROCESS_BASIC_INFORMATION BasicInfo;
     LARGE_INTEGER ByteOffset = { 0 };
-    LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg = { 0 };
+    LXBUS_TERMINAL_WINDOW_RESIZE_MESSAGE LxTerminalMsg;
+    RtlZeroMemory(&LxTerminalMsg, sizeof LxTerminalMsg);
 
     // Create an event to sync all reads and writes
     HANDLE EventHandle = NULL;
@@ -126,7 +127,7 @@ ProcessInteropMessages(HANDLE ReadPipeHandle,
 
     if (Status == STATUS_PENDING)
     {
-        HANDLE Handles[2] = { NULL };
+        HANDLE Handles[2];
         Handles[0] = EventHandle;
         Handles[1] = ProcResult->ProcInfo.hProcess;
 
@@ -172,10 +173,8 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     LXSS_MESSAGE_PORT_RECEIVE_OBJECT Buffer, *LxReceiveMsg = NULL;
     HANDLE EventHandle = NULL;
     HANDLE HeapHandle = RtlGetProcessHeap();
-    RTL_CRITICAL_SECTION CriticalSection;
 
     // Create an event to sync all reads and writes
-    bRes = RtlInitializeCriticalSectionEx(&CriticalSection, 0, 0);
     Status = NtCreateEvent(&EventHandle,
                            EVENT_ALL_ACCESS,
                            NULL,
@@ -249,13 +248,14 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     }
 
     // Create Windows process using unmarshalled VFS handles
-    LX_CREATE_PROCESS_RESULT ProcResult = { 0 };
+    LX_CREATE_PROCESS_RESULT ProcResult;
+    RtlZeroMemory(&ProcResult, sizeof ProcResult);
     bRes = CreateWinProcess(LxReceiveMsg, &ProcResult);
     if(!bRes)
         wprintf(L"Can't create Win32 process...\n");
 
     // Create pipes to get console resize message
-    HANDLE ReadPipeHandle = NULL, WritePipeHandle = NULL;
+    HANDLE ReadPipeHandle, WritePipeHandle;
     Status = OpenAnonymousPipe(&ReadPipeHandle, &WritePipeHandle);
 
     if (NT_SUCCESS(Status))
@@ -268,7 +268,7 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
         LogStatus(Status, L"OpenAnonymousPipe");
 
     // Marshal hWritePipe handle to get struct winsize from TIOCGWINSZ ioctl
-    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg = { 0 };
+    LXBUS_IPC_MESSAGE_MARSHAL_HANDLE_DATA HandleMsg;
     HandleMsg.Handle = ToULong(WritePipeHandle);
     HandleMsg.Type = LxOutputPipeType;
 
@@ -335,7 +335,8 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
         ClosePseudoConsole(ProcResult.hpCon);
 
     // Cleanup
-    RtlFreeHeap(HeapHandle, 0, LxReceiveMsg);
+    if(LxReceiveMsg)
+        RtlFreeHeap(HeapHandle, 0, LxReceiveMsg);
     NtClose(EventHandle);
     if(ProcResult.ProcInfo.hProcess)
         NtClose(ProcResult.ProcInfo.hProcess);
@@ -344,5 +345,4 @@ CreateProcessAsync(PTP_CALLBACK_INSTANCE Instance,
     NtClose(ReadPipeHandle);
     NtClose(WritePipeHandle);
     NtClose(ClientHandle);
-    RtlDeleteCriticalSection(&CriticalSection);
 }

@@ -13,7 +13,7 @@ LogStatus(NTSTATUS Status, PWSTR Function);
 
 void
 WINAPI
-Log(HRESULT Result, PWSTR Function);
+Log(ULONG Result, PWSTR Function);
 
 NTSTATUS
 NTAPI

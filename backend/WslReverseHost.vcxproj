@@ -39,7 +39,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)src\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib;Ws2_32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

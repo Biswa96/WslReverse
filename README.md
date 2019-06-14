@@ -77,8 +77,8 @@ src\
 
 ## Take a long ride with :minibus:
 
-To use LxBus, rename the [LxCoreFlags registry file](Others/LxCoreFlags.reg.ini) and
-import it. Then reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c)
+To use LxBus, import the [LxCoreFlags registry file](Others/LxCoreFlags.REG).
+Then reboot PC. Compile the [LxBusClient.c](linux_files/LxBusClient.c)
 with `make` in WSL. Execute WslRevese with `-b` or `--bus` option as administrator
 and LxBusClient as root user in WSL. Those two binaries exchange some messages
 between WSL and Windows side using LxBus via. LxCore driver. Here are some of them:

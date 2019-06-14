@@ -13,7 +13,6 @@
     <ClCompile Include="CreateProcessAsync.c" />
     <ClCompile Include="CreateWinProcess.c" />
     <ClCompile Include="Helpers.c" />
-    <ClCompile Include="LxssDevice.c" />
     <ClCompile Include="wgetopt.c" />
     <ClCompile Include="WslReverse.c" />
   </ItemGroup>
@@ -25,7 +24,6 @@
     <ClInclude Include="CreateWinProcess.h" />
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="LxBus.h" />
-    <ClInclude Include="LxssDevice.h" />
     <ClInclude Include="wgetopt.h" />
     <ClInclude Include="WinInternal.h" />
     <ClInclude Include="LxssUserSession.h" />
@@ -61,7 +59,7 @@
       <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib;Ws2_32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -3,8 +3,8 @@
 NAME := WslReverse
 BINDIR = ../bin
 CC = gcc
-CFLAGS := -ggdb -m64 -Wall -Wextra
-LIBS := -lOle32 -lNtdll
+CFLAGS := -Os -std=c99 -m64 -Wall -Wextra
+LIBS := -lntdll -lole32 -lshell32 -lws2_32
 SOURCES := $(wildcard *.c)
 OBJECTS := $(SOURCES:.c=.obj)
 BINS := $(patsubst %.obj,$(BINDIR)/%.obj,$(OBJECTS))
@@ -24,5 +24,8 @@ $(BINS): $(BINDIR)/%.obj: %.c
 
 $(BINDIR):
 	@mkdir ..\bin
+
+clean:
+	rm -rf $(BINDIR)
 
 #END

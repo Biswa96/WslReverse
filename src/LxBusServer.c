@@ -413,7 +413,10 @@ LxBusServer(ILxssUserSession* wslSession,
     Status = RtlAcquirePrivilege(&Privilege, 1, 0, (PVOID*)&ReturnedState);
     LogStatus(Status, L"RtlAcquirePrivilege");
     if (Status == STATUS_PRIVILEGE_NOT_HELD)
+    {
         wprintf(L"Enable \"Replace a process level token\" privilege in Local Security Policy...\n");
+        goto Cleanup;
+    }
 
     LXBUS_IPC_CONNECTION_MARSHAL_FORK_TOKEN_MSG TokenMsg = { 0 };
     TokenMsg.Handle = ToULong(*ReturnedState);
@@ -450,9 +453,10 @@ LxBusServer(ILxssUserSession* wslSession,
 
     Sleep(1000);
 
-    // Cleanup
+Cleanup:
     NtClose(ProcessHandle);
-    RtlReleasePrivilege(ReturnedState);
+    if (ReturnedState)
+        RtlReleasePrivilege(ReturnedState);
     NtClose(pipePairA.Read);
     NtClose(pipePairA.Write);
     NtClose(pipePairB.Read);

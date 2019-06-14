@@ -29,7 +29,7 @@ Log(ULONG Result, PWSTR Function)
         RtlZeroMemory(MsgBuffer, sizeof MsgBuffer);
         FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                        NULL, Result, MsgSize, MsgBuffer, MsgSize, NULL);
-        wprintf(L"%ls Error: %ld\n%ls\n", Function, Result, MsgBuffer);
+        wprintf(L"%ls Error: %ld %ls\n", Function, Result, MsgBuffer);
     }
 }
 

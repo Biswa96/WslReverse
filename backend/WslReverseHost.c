@@ -4,26 +4,26 @@
 #include "GetConhostServerId.h"
 #include <stdio.h>
 
-void
-WINAPI
-BackendUsage(void)
+void WINAPI BackendUsage(void)
 {
     wprintf(L"\n Required Command Line Format:\n"
             L"WslReverseHost.exe [CurrentDistroID] [ServerHandle] [EventHandle] [ProcessHandle] [LxInstanceId]\n");
 }
 
-int
-WINAPI
-main(void)
+int WINAPI main(void)
 {
     int wargc;
     PWSTR* wargv = CommandLineToArgvW(RtlGetCommandLineW(), &wargc);
 
     if (wargc < 5)
     {
+        LocalFree(wargv);
         BackendUsage();
         return 0;
     }
+
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 
     HRESULT hRes;
     ILxssUserSession* wslSession = NULL;
@@ -36,8 +36,8 @@ main(void)
                             CLSCTX_LOCAL_SERVER,
                             &IID_ILxssUserSession,
                             (PVOID*)&wslSession);
-    if (!wslSession)
-        return 0;
+    if (FAILED(hRes))
+        return 1;
 
     NTSTATUS Status;
     UNICODE_STRING DistroIdString;
@@ -47,10 +47,10 @@ main(void)
     Status = RtlInitUnicodeStringEx(&DistroIdString, wargv[1]);
     Status = RtlGUIDFromString(&DistroIdString, &DistroId);
     hRes = wslSession->lpVtbl->CreateInstance(wslSession, &DistroId, 3);
-    if (hRes != 0)
-        return 0;
+    if (FAILED(hRes))
+        return 1;
 
-    HANDLE ServerHandle = NULL, EventHandle = NULL, ProcessHandle = NULL;
+    HANDLE ServerHandle, EventHandle, ProcessHandle;
 
     ServerHandle = ToHandle(wcstoul(wargv[2], NULL, 0));
     EventHandle = ToHandle(wcstoul(wargv[3], NULL, 0));
@@ -69,6 +69,19 @@ main(void)
 
     Status = NtSetEvent(EventHandle, NULL);
     Status = NtWaitForSingleObject(ProcessHandle, FALSE, NULL);
+
+    if (NT_SUCCESS(Status))
+        wprintf(L"\nFrontend process closed.\n");
+
+    if (wargc == 6)
+    {
+        UNICODE_STRING uString;
+        GUID LxInstanceId;
+
+        Status = RtlInitUnicodeStringEx(&uString, wargv[5]);
+        Status = RtlGUIDFromString(&uString, &LxInstanceId);
+    }
+
     CreateProcessWorker(NULL, ServerHandle, NULL);
 
     // Cleanup
@@ -79,5 +92,8 @@ main(void)
     if (ServerHandle)
         NtClose(ServerHandle);
     hRes = wslSession->lpVtbl->Release(wslSession);
+    LocalFree(wargv);
     CoUninitialize();
+    WSACleanup();
+    return 0;
 }

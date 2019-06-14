@@ -91,8 +91,8 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
 
     NTSTATUS Status;
     IO_STATUS_BLOCK IoStatusBlock;
-    PTP_WORK WorkReturn = NULL;
-    LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG WaitMsg = { 0 };
+    PTP_WORK WorkReturn;
+    LXBUS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG WaitMsg;
 
     // Infinite loop to wait for client message
     while (TRUE)
@@ -137,7 +137,7 @@ InitializeInterop(HANDLE ServerHandle,
 
     BOOL bRes;
     NTSTATUS Status;
-    HANDLE EventHandle, ProcHandle, ServerHandleDup;
+    HANDLE EventHandle, ProcHandle, ServerHandleDup, hProc = NtCurrentProcess();
     HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Create an event to synchronize with wslhost.exe process
@@ -151,53 +151,30 @@ InitializeInterop(HANDLE ServerHandle,
     bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
     bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
-    Status = NtDuplicateObject(NtCurrentProcess(),
-                               NtCurrentProcess(),
-                               NtCurrentProcess(),
-                               &ProcHandle,
-                               0,
-                               OBJ_INHERIT,
-                               DUPLICATE_SAME_ACCESS);
-    Status = NtDuplicateObject(NtCurrentProcess(),
-                               ServerHandle,
-                               NtCurrentProcess(),
-                               &ServerHandleDup,
-                               0,
-                               0,
-                               DUPLICATE_SAME_ACCESS);
+    Status = NtDuplicateObject(hProc, hProc, hProc, &ProcHandle, 0, OBJ_INHERIT, DUPLICATE_SAME_ACCESS);
+    Status = NtDuplicateObject(hProc, ServerHandle, hProc, &ServerHandleDup, 0, 0, DUPLICATE_SAME_ACCESS);
 
     // Connect to LxssMessagePort for Windows interopt
-    PTP_WORK WorkReturn = NULL;
-    Status = TpAllocWork(&WorkReturn,
-                         CreateProcessWorker,
-                         ServerHandleDup,
-                         NULL);
-
+    PTP_WORK WorkReturn;
+    Status = TpAllocWork(&WorkReturn, CreateProcessWorker, ServerHandleDup, NULL);
     LogStatus(Status, L"CreateProcessWorker TpAllocWork");
     TpPostWork(WorkReturn);
 
     // Configure all the required handles for wslhost.exe process
-    size_t AttrbSize = 0;
+    size_t AttrbSize;
     LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = NULL;
-    InitializeProcThreadAttributeList(NULL, 1, 0, &AttrbSize);
+    bRes = InitializeProcThreadAttributeList(NULL, 1, 0, &AttrbSize);
     AttrbList = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, AttrbSize);
     bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
 
-    if (AttrbList)
-    {
-        HANDLE Value[3] = { NULL };
-        Value[0] = ServerHandle;
-        Value[1] = EventHandle;
-        Value[2] = ProcHandle;
+    HANDLE Value[3];
+    Value[0] = ServerHandle;
+    Value[1] = EventHandle;
+    Value[2] = ProcHandle;
 
-        bRes = UpdateProcThreadAttribute(AttrbList,
-                                         0,
-                                         PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
-                                         Value,
-                                         sizeof Value,
-                                         NULL,
-                                         NULL);
-    }
+    if (bRes)
+        bRes = UpdateProcThreadAttribute(AttrbList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
+                                         Value, sizeof Value, NULL, NULL);
 
     //
     // Create required commandline for WslHost process
@@ -226,12 +203,9 @@ InitializeInterop(HANDLE ServerHandle,
                  ToULong(ProcHandle));
 
     PROCESS_INFORMATION ProcInfo;
-    RtlZeroMemory(&ProcInfo, sizeof ProcInfo);
-
     STARTUPINFOEXW SInfoEx;
     RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
 
-    RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
     SInfoEx.StartupInfo.cb = sizeof SInfoEx;
     SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
@@ -257,24 +231,19 @@ InitializeInterop(HANDLE ServerHandle,
                 CommandLine,
                 ProcInfo.dwProcessId, ProcInfo.hProcess, ProcInfo.hThread);
 
-        HANDLE Handles[2] = { NULL };
+        HANDLE Handles[2];
         Handles[0] = ProcInfo.hProcess;
         Handles[1] = EventHandle;
 
-        Status = NtWaitForMultipleObjects(ARRAY_SIZE(Handles),
-                                          Handles,
-                                          WaitAny,
-                                          FALSE,
-                                          NULL);
+        Status = NtWaitForMultipleObjects(ARRAY_SIZE(Handles), Handles, WaitAny, FALSE, NULL);
     }
     else
-        LogResult(RtlGetLastWin32Error(), L"CreteProcess");
+        Log(RtlGetLastWin32Error(), L"CreateProcessW");
 
     // Cleanup
     RtlFreeUnicodeString(&CurrentDistroIDstring);
     RtlFreeHeap(HeapHandle, 0, AttrbList);
     NtClose(EventHandle);
-    // NtClose(hServer) causes STATUS_INVALID_HANDLE in CreateProcessWorker
     NtClose(ProcHandle);
     NtClose(ProcInfo.hProcess);
     NtClose(ProcInfo.hThread);
@@ -292,6 +261,9 @@ CreateLxProcess(ILxssUserSession* wslSession,
 {
     HRESULT hRes;
     HANDLE LxProcessHandle = NULL, ServerHandle = NULL;
+    GUID InitiatedDistroID, LxInstanceID;
+    SOCKET s_in, s_out, s_err;
+    SOCKET IpcServerSocket;
     HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Console Window handle of current process (if any)
@@ -328,10 +300,6 @@ CreateLxProcess(ILxssUserSession* wslSession,
     WindowSize.X = ConBuffer.srWindow.Right - ConBuffer.srWindow.Left + 1;
     WindowSize.Y = ConBuffer.srWindow.Bottom - ConBuffer.srWindow.Top + 1;
 
-    GUID InitiatedDistroID, LxInstanceID;
-    SOCKET s_in, s_out, s_err;
-    SOCKET IpcServerSocket;
-
     hRes = wslSession->lpVtbl->CreateLxProcess(
         wslSession,
         DistroID,
@@ -356,7 +324,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
         &s_err,
         &IpcServerSocket);
 
-    if (SUCCEEDED(hRes))
+    if (SUCCEEDED(hRes) && LxProcessHandle != NULL)
     {
         NTSTATUS Status;
         IO_STATUS_BLOCK IoStatusBlock;
@@ -366,7 +334,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
         RtlStringFromGUID(&InitiatedDistroID, &InitiatedDistroIDstring);
 
         // Get NT side Process ID of CommandLine process
-        LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg = { 0 };
+        LXBUS_LX_PROCESS_HANDLE_GET_NT_PID_MSG LxProcMsg;
 
         Status = NtDeviceIoControlFile(LxProcessHandle,
                                        NULL,

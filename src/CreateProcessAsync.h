@@ -5,7 +5,7 @@ NTSTATUS
 WINAPI
 WaitForMessage(HANDLE ClientHandle,
                HANDLE EventHandle,
-               PIO_STATUS_BLOCK IoStatusBlock);
+               PIO_STATUS_BLOCK IoRequestToCancel);
 
 NTSTATUS
 WINAPI
