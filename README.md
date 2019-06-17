@@ -118,8 +118,9 @@ IPC mechanism. What interesting thing do you want to do with LxBus? :yum:
 
 This project uses some definitions and data types from followings. Thanks to:
 
-* Alex Ionescu for [lxss project] and all the IOCTLs details ([MIT License]). 
-* Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API] ([GPLv3 License]). 
+* Alex Ionescu for [lxss project] and all the IOCTLs details ([MIT License]).
+* Steven G, Wen Jia Liu and others for ProcessHacker's collection of [native API] ([GPLv3 License]).
+* Petr Beneš for [pdbex tool](https://github.com/wbenny/pdbex).
 
 [lxss project]: https://github.com/ionescu007/lxss
 [MIT License]: https://github.com/ionescu007/lxss/blob/master/LICENSE

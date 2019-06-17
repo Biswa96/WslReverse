@@ -6,8 +6,8 @@
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (Status >= 0)
 #endif
-#define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
-#define NtCurrentThread() ((HANDLE)(LONG_PTR)-2)
+#define NtCurrentProcess() ((void*)(long long)-1)
+#define NtCurrentThread() ((void*)(long long)-2)
 
 // From processhacker /phlib/include/phsup.h
 #define TICKS_PER_NS ((long long)1 * 10)
@@ -50,208 +50,236 @@
 #define ToULong(x) (unsigned long)(unsigned long long)(x)
 #define ToHandle(x) (void*)(unsigned long long)(x)
 
-typedef struct _STRING {
-    USHORT Length;
-    USHORT MaximumLength;
-    PCHAR Buffer;
-} STRING, ANSI_STRING, *PSTRING, *PANSI_STRING;
+/*
+* structures are copied directly from ntdll.pdb with pdbex tool
+* Thanks to Petr Benes aka. wbenny@GitHub
+*/
 
-typedef struct _UNICODE_STRING {
-    USHORT Length;
-    USHORT MaximumLength;
-    PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
+typedef struct _UNICODE_STRING
+{
+    unsigned short Length;
+    unsigned short MaximumLength;
+    wchar_t* Buffer;
+} UNICODE_STRING, * PUNICODE_STRING; /* size: 0x0010 */
 
-typedef struct _CURDIR {
-    UNICODE_STRING DosPath;
-    HANDLE Handle;
-} CURDIR, *PCURDIR;
+typedef struct _CURDIR
+{
+    struct _UNICODE_STRING DosPath;
+    void* Handle;
+} CURDIR, * PCURDIR; /* size: 0x0018 */
 
-typedef struct _RTL_DRIVE_LETTER_CURDIR {
-    USHORT Flags;
-    USHORT Length;
-    ULONG TimeStamp;
-    STRING DosPath;
-} RTL_DRIVE_LETTER_CURDIR, *PRTL_DRIVE_LETTER_CURDIR;
+typedef struct _STRING
+{
+    unsigned short Length;
+    unsigned short MaximumLength;
+    char* Buffer;
+} STRING, ANSI_STRING, * PSTRING, * PANSI_STRING; /* size: 0x0010 */
+
+typedef struct _RTL_DRIVE_LETTER_CURDIR
+{
+    unsigned short Flags;
+    unsigned short Length;
+    unsigned long TimeStamp;
+    struct _STRING DosPath;
+} RTL_DRIVE_LETTER_CURDIR, * PRTL_DRIVE_LETTER_CURDIR; /* size: 0x0018 */
 
 #define RTL_MAX_DRIVE_LETTERS 32
 
-typedef struct _RTL_USER_PROCESS_PARAMETERS {
-    ULONG MaximumLength;
-    ULONG Length;
-    ULONG Flags;
-    ULONG DebugFlags;
-    HANDLE ConsoleHandle;
-    ULONG ConsoleFlags;
-    HANDLE StandardInput;
-    HANDLE StandardOutput;
-    HANDLE StandardError;
-    CURDIR CurrentDirectory;
-    UNICODE_STRING DllPath;
-    UNICODE_STRING ImagePathName;
-    UNICODE_STRING CommandLine;
-    PWSTR Environment;
-    ULONG StartingX;
-    ULONG StartingY;
-    ULONG CountX;
-    ULONG CountY;
-    ULONG CountCharsX;
-    ULONG CountCharsY;
-    ULONG FillAttribute;
-    ULONG WindowFlags;
-    ULONG ShowWindowFlags;
-    UNICODE_STRING WindowTitle;
-    UNICODE_STRING DesktopInfo;
-    UNICODE_STRING ShellInfo;
-    UNICODE_STRING RuntimeData;
-    RTL_DRIVE_LETTER_CURDIR CurrentDirectories[RTL_MAX_DRIVE_LETTERS];
-    SIZE_T EnvironmentSize;
-    SIZE_T EnvironmentVersion;
-    PVOID PackageDependencyData;
-    ULONG ProcessGroupId;
-    ULONG LoaderThreads;
-    UNICODE_STRING RedirectionDllName;
-    UNICODE_STRING HeapPartitionName;
-    PVOID DefaultThreadpoolCpuSetMasks;
-    ULONG DefaultThreadpoolCpuSetMaskCount;
-} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
+typedef struct _RTL_USER_PROCESS_PARAMETERS
+{
+    unsigned long MaximumLength;
+    unsigned long Length;
+    unsigned long Flags;
+    unsigned long DebugFlags;
+    void* ConsoleHandle;
+    unsigned long ConsoleFlags;
+    void* StandardInput;
+    void* StandardOutput;
+    void* StandardError;
+    struct _CURDIR CurrentDirectory;
+    struct _UNICODE_STRING DllPath;
+    struct _UNICODE_STRING ImagePathName;
+    struct _UNICODE_STRING CommandLine;
+    void* Environment;
+    unsigned long StartingX;
+    unsigned long StartingY;
+    unsigned long CountX;
+    unsigned long CountY;
+    unsigned long CountCharsX;
+    unsigned long CountCharsY;
+    unsigned long FillAttribute;
+    unsigned long WindowFlags;
+    unsigned long ShowWindowFlags;
+    struct _UNICODE_STRING WindowTitle;
+    struct _UNICODE_STRING DesktopInfo;
+    struct _UNICODE_STRING ShellInfo;
+    struct _UNICODE_STRING RuntimeData;
+    struct _RTL_DRIVE_LETTER_CURDIR CurrentDirectores[RTL_MAX_DRIVE_LETTERS];
+    unsigned __int64 EnvironmentSize;
+    unsigned __int64 EnvironmentVersion;
+    void* PackageDependencyData;
+    unsigned long ProcessGroupId;
+    unsigned long LoaderThreads;
+    struct _UNICODE_STRING RedirectionDllName;
+    struct _UNICODE_STRING HeapPartitionName;
+    unsigned __int64* DefaultThreadpoolCpuSetMasks;
+    unsigned long DefaultThreadpoolCpuSetMaskCount;
+    long __PADDING__[1];
+} RTL_USER_PROCESS_PARAMETERS, * PRTL_USER_PROCESS_PARAMETERS; /* size: 0x0440 */
 
-typedef struct _PEB {
-    UCHAR InheritedAddressSpace;
-    UCHAR ReadImageFileExecOptions;
-    UCHAR BeingDebugged;
-    union {
-        UCHAR BitField;
-        struct {
-            UCHAR ImageUsesLargePages : 1;
-            UCHAR IsProtectedProcess : 1;
-            UCHAR IsImageDynamicallyRelocated : 1;
-            UCHAR SkipPatchingUser32Forwarders : 1;
-            UCHAR IsPackagedProcess : 1;
-            UCHAR IsAppContainer : 1;
-            UCHAR IsProtectedProcessLight : 1;
-            UCHAR IsLongPathAwareProcess : 1;
-        };
-    };
-    HANDLE Mutant;
-    HMODULE ImageBaseAddress;
-    PVOID Ldr;
-    PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
-    PVOID SubSystemData;
-    HANDLE ProcessHeap;
-    PRTL_CRITICAL_SECTION FastPebLock;
-    PSLIST_HEADER AtlThunkSListPtr;
-    PVOID IFEOKey;
-    union {
-        ULONG CrossProcessFlags;
-        struct {
-            ULONG ProcessInJob : 1;
-            ULONG ProcessInitializing : 1;
-            ULONG ProcessUsingVEH : 1;
-            ULONG ProcessUsingVCH : 1;
-            ULONG ProcessUsingFTH : 1;
-            ULONG ProcessPreviouslyThrottled : 1;
-            ULONG ProcessCurrentlyThrottled : 1;
-            ULONG ProcessImagesHotPatched : 1;
-            ULONG ReservedBits0 : 24;
-        };
-    };
-    union {
-        PVOID KernelCallbackTable;
-        PVOID UserSharedInfoPtr;
-    };
-    ULONG SystemReserved;
-    PSLIST_HEADER AtlThunkSListPtr32;
-    PVOID ApiSetMap;
-    ULONG TlsExpansionCounter;
-    PVOID TlsBitmap;
-    ULONG TlsBitmapBits[2];
-    PVOID ReadOnlySharedMemoryBase;
-    PVOID SharedData;
-    PVOID ReadOnlyStaticServerData;
-    PVOID AnsiCodePageData;
-    PVOID OemCodePageData;
-    PVOID UnicodeCaseTableData;
-    ULONG NumberOfProcessors;
-    ULONG NtGlobalFlag;
-    LARGE_INTEGER CriticalSectionTimeout;
-    ULONG_PTR HeapSegmentReserve;
-    ULONG_PTR HeapSegmentCommit;
-    ULONG_PTR HeapDeCommitTotalFreeThreshold;
-    ULONG_PTR HeapDeCommitFreeBlockThreshold;
-    ULONG NumberOfHeaps;
-    ULONG MaximumNumberOfHeaps;
-    PVOID ProcessHeaps;
-    PVOID GdiSharedHandleTable;
-    PVOID ProcessStarterHelper;
-    ULONG GdiDCAttributeList;
-    PVOID LoaderLock;
-    ULONG OSMajorVersion;
-    ULONG OSMinorVersion;
-    USHORT OSBuildNumber;
-    USHORT OSCSDVersion;
-    ULONG OSPlatformId;
-    ULONG ImageSubsystem;
-    ULONG ImageSubsystemMajorVersion;
-    ULONG ImageSubsystemMinorVersion;
-    ULONG_PTR ActiveProcessAffinityMask;
-    ULONG GdiHandleBuffer[60];
-    void(__stdcall *PostProcessInitRoutine)(void);
-    PVOID TlsExpansionBitmap;
-    ULONG TlsExpansionBitmapBits[32];
-    ULONG SessionId;
-    LARGE_INTEGER AppCompatFlags;
-    LARGE_INTEGER AppCompatFlagsUser;
-    PVOID pShimData;
-    PVOID AppCompatInfo;
-    UNICODE_STRING CSDVersion;
-    PVOID ActivationContextData;
-    PVOID ProcessAssemblyStorageMap;
-    PVOID SystemDefaultActivationContextData;
-    PVOID SystemAssemblyStorageMap;
-    ULONG_PTR MinimumStackCommit;
-    PVOID SparePointers[4];
-    ULONG SpareUlongs[5];
-    PVOID WerRegistrationData;
-    PVOID WerShipAssertPtr;
-    PVOID pUnused;
-    PVOID pImageHeaderHash;
-    union {
-        ULONG TracingFlags;
-        struct {
-            ULONG HeapTracingEnabled : 1;
-            ULONG CritSecTracingEnabled : 1;
-            ULONG LibLoaderTracingEnabled : 1;
-            ULONG SpareTracingBits : 29;
-        };
-    };
-    ULONGLONG CsrServerReadOnlySharedMemoryBase;
-    ULONG_PTR TppWorkerpListLock;
-    LIST_ENTRY TppWorkerpList;
-    PVOID WaitOnAddressHashTable[128];
-    PVOID TelemetryCoverageHeader;
-    ULONG CloudFileFlags;
-    ULONG CloudFileDiagFlags;
-    UCHAR PlaceholderCompatibilityMode;
-    UCHAR PlaceholderCompatibilityModeReserved[7];
-    PVOID LeapSecondData;
-    union {
-        ULONG LeapSecondFlags;
-        struct {
-            ULONG SixtySecondEnabled : 1;
-            ULONG Reserved : 31;
-        };
-    };
-    ULONG NtGlobalFlag2;
-} PEB, *PPEB;
+typedef struct _PEB
+{
+    unsigned char InheritedAddressSpace;
+    unsigned char ReadImageFileExecOptions;
+    unsigned char BeingDebugged;
+    union
+    {
+        unsigned char BitField;
+        struct /* bitfield */
+        {
+            unsigned char ImageUsesLargePages : 1; /* bit position: 0 */
+            unsigned char IsProtectedProcess : 1; /* bit position: 1 */
+            unsigned char IsImageDynamicallyRelocated : 1; /* bit position: 2 */
+            unsigned char SkipPatchingUser32Forwarders : 1; /* bit position: 3 */
+            unsigned char IsPackagedProcess : 1; /* bit position: 4 */
+            unsigned char IsAppContainer : 1; /* bit position: 5 */
+            unsigned char IsProtectedProcessLight : 1; /* bit position: 6 */
+            unsigned char IsLongPathAwareProcess : 1; /* bit position: 7 */
+        }; /* bitfield */
+    }; /* size: 0x0001 */
+    unsigned char Padding0[4];
+    void* Mutant;
+    void* ImageBaseAddress;
+    struct _PEB_LDR_DATA* Ldr;
+    struct _RTL_USER_PROCESS_PARAMETERS* ProcessParameters;
+    void* SubSystemData;
+    void* ProcessHeap;
+    struct _RTL_CRITICAL_SECTION* FastPebLock;
+    union _SLIST_HEADER* volatile AtlThunkSListPtr;
+    void* IFEOKey;
+    union
+    {
+        unsigned long CrossProcessFlags;
+        struct /* bitfield */
+        {
+            unsigned long ProcessInJob : 1; /* bit position: 0 */
+            unsigned long ProcessInitializing : 1; /* bit position: 1 */
+            unsigned long ProcessUsingVEH : 1; /* bit position: 2 */
+            unsigned long ProcessUsingVCH : 1; /* bit position: 3 */
+            unsigned long ProcessUsingFTH : 1; /* bit position: 4 */
+            unsigned long ProcessPreviouslyThrottled : 1; /* bit position: 5 */
+            unsigned long ProcessCurrentlyThrottled : 1; /* bit position: 6 */
+            unsigned long ProcessImagesHotPatched : 1; /* bit position: 7 */
+            unsigned long ReservedBits0 : 24; /* bit position: 8 */
+        }; /* bitfield */
+    }; /* size: 0x0004 */
+    unsigned char Padding1[4];
+    union
+    {
+        void* KernelCallbackTable;
+        void* UserSharedInfoPtr;
+    }; /* size: 0x0008 */
+    unsigned long SystemReserved;
+    unsigned long AtlThunkSListPtr32;
+    void* ApiSetMap;
+    unsigned long TlsExpansionCounter;
+    unsigned char Padding2[4];
+    void* TlsBitmap;
+    unsigned long TlsBitmapBits[2];
+    void* ReadOnlySharedMemoryBase;
+    void* SharedData;
+    void** ReadOnlyStaticServerData;
+    void* AnsiCodePageData;
+    void* OemCodePageData;
+    void* UnicodeCaseTableData;
+    unsigned long NumberOfProcessors;
+    unsigned long NtGlobalFlag;
+    union _LARGE_INTEGER CriticalSectionTimeout;
+    unsigned __int64 HeapSegmentReserve;
+    unsigned __int64 HeapSegmentCommit;
+    unsigned __int64 HeapDeCommitTotalFreeThreshold;
+    unsigned __int64 HeapDeCommitFreeBlockThreshold;
+    unsigned long NumberOfHeaps;
+    unsigned long MaximumNumberOfHeaps;
+    void** ProcessHeaps;
+    void* GdiSharedHandleTable;
+    void* ProcessStarterHelper;
+    unsigned long GdiDCAttributeList;
+    unsigned char Padding3[4];
+    struct _RTL_CRITICAL_SECTION* LoaderLock;
+    unsigned long OSMajorVersion;
+    unsigned long OSMinorVersion;
+    unsigned short OSBuildNumber;
+    unsigned short OSCSDVersion;
+    unsigned long OSPlatformId;
+    unsigned long ImageSubsystem;
+    unsigned long ImageSubsystemMajorVersion;
+    unsigned long ImageSubsystemMinorVersion;
+    unsigned char Padding4[4];
+    unsigned __int64 ActiveProcessAffinityMask;
+    unsigned long GdiHandleBuffer[60];
+    void* PostProcessInitRoutine /* function */;
+    void* TlsExpansionBitmap;
+    unsigned long TlsExpansionBitmapBits[32];
+    unsigned long SessionId;
+    unsigned char Padding5[4];
+    union _ULARGE_INTEGER AppCompatFlags;
+    union _ULARGE_INTEGER AppCompatFlagsUser;
+    void* pShimData;
+    void* AppCompatInfo;
+    struct _UNICODE_STRING CSDVersion;
+    const struct _ACTIVATION_CONTEXT_DATA* ActivationContextData;
+    struct _ASSEMBLY_STORAGE_MAP* ProcessAssemblyStorageMap;
+    const struct _ACTIVATION_CONTEXT_DATA* SystemDefaultActivationContextData;
+    struct _ASSEMBLY_STORAGE_MAP* SystemAssemblyStorageMap;
+    unsigned __int64 MinimumStackCommit;
+    void* SparePointers[4];
+    unsigned long SpareUlongs[5];
+    void* WerRegistrationData;
+    void* WerShipAssertPtr;
+    void* pUnused;
+    void* pImageHeaderHash;
+    union
+    {
+        unsigned long TracingFlags;
+        struct /* bitfield */
+        {
+            unsigned long HeapTracingEnabled : 1; /* bit position: 0 */
+            unsigned long CritSecTracingEnabled : 1; /* bit position: 1 */
+            unsigned long LibLoaderTracingEnabled : 1; /* bit position: 2 */
+            unsigned long SpareTracingBits : 29; /* bit position: 3 */
+        }; /* bitfield */
+    }; /* size: 0x0004 */
+    unsigned char Padding6[4];
+    unsigned __int64 CsrServerReadOnlySharedMemoryBase;
+    unsigned __int64 TppWorkerpListLock;
+    struct _LIST_ENTRY TppWorkerpList;
+    void* WaitOnAddressHashTable[128];
+    void* TelemetryCoverageHeader;
+    unsigned long CloudFileFlags;
+    unsigned long CloudFileDiagFlags;
+    char PlaceholderCompatibilityMode;
+    char PlaceholderCompatibilityModeReserved[7];
+    struct _LEAP_SECOND_DATA* LeapSecondData;
+    union
+    {
+        unsigned long LeapSecondFlags;
+        struct /* bitfield */
+        {
+            unsigned long SixtySecondEnabled : 1; /* bit position: 0 */
+            unsigned long Reserved : 31; /* bit position: 1 */
+        }; /* bitfield */
+    }; /* size: 0x0004 */
+    unsigned long NtGlobalFlag2;
+} PEB, * PPEB; /* size: 0x07c8 */
 
 typedef struct _TEB {
     PVOID Unused[12];
     PPEB ProcessEnvironmentBlock;
     ULONG LastErrorValue;
-} TEB, *PTEB;
+} TEB, * PTEB;
 
-// macros with PEB & TEB
+/* macros with PEB & TEB */
 #define RtlGetCommandLineW() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessParameters->CommandLine.Buffer
 #define RtlGetLastWin32Error() NtCurrentTeb()->LastErrorValue
 #define RtlGetProcessHeap() NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap

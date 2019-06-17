@@ -51,8 +51,9 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
             HANDLE hProcess = ((PX_HPCON)hpCon)->hConHostProcess;
 
             wprintf(L"[+] CreatePseudoConsole: \n\t"
-                    L" ConHostProcessId: %lu \n\t ConHostProcessHandle: 0x%p\n",
-                    GetProcessId(hProcess), hProcess);
+                    L" ConHostProcessId: %lu \n\t ConHostProcessHandle: 0x%p \n\t"
+                    L" Width: %hu \n\t Height: %hu \n",
+                    GetProcessId(hProcess), hProcess, ConsoleSize.X, ConsoleSize.Y);
         }
         else
             LogResult(hRes, L"CreatePseudoConsole");
@@ -137,8 +138,8 @@ CreateWinProcess(PLXSS_MESSAGE_PORT_RECEIVE_OBJECT LxReceiveMsg,
         if (NT_SUCCESS(Status))
         {
             wprintf(L"[+] NtReadVirtualMemory \n\t"
-                    L" NumberOfBytesRead: %zu \n\t OSMajorVersion: %lu\n",
-                    NumberOfBytesRead, Peb.OSMajorVersion);
+                    L" NumberOfBytesRead: %zu \n\t OSBuildNumber: %hu \n\t ImageSubsystem: %lu \n",
+                    NumberOfBytesRead, Peb.OSBuildNumber, Peb.ImageSubsystem);
         }
         else
             LogStatus(Status, L"NtReadVirtualMemory");
