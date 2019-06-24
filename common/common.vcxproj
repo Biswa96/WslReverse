@@ -49,6 +49,7 @@
     <ClCompile Include="GetConhostServerId.c" />
     <ClCompile Include="Helpers.c" />
     <ClCompile Include="LxBusServer.c" />
+    <ClCompile Include="SpawnWslHost.c" />
     <ClCompile Include="wgetopt.c" />
   </ItemGroup>
   <ItemGroup>
@@ -60,6 +61,7 @@
     <ClInclude Include="LxBus.h" />
     <ClInclude Include="LxBusServer.h" />
     <ClInclude Include="LxssUserSession.h" />
+    <ClInclude Include="SpawnWslHost.h" />
     <ClInclude Include="wgetopt.h" />
     <ClInclude Include="WinInternal.h" />
   </ItemGroup>

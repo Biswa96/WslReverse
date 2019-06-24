@@ -4,6 +4,7 @@
 #include "Helpers.h"
 #include "LxssUserSession.h"
 #include "LxBus.h"
+#include "SpawnWslHost.h"
 #include <stdio.h>
 
 #define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE |\
@@ -130,123 +131,31 @@ CreateProcessWorker(PTP_CALLBACK_INSTANCE Instance,
 BOOL
 WINAPI
 InitializeInterop(HANDLE ServerHandle,
-                  GUID* CurrentDistroID,
-                  GUID* LxInstanceID)
+                  GUID* InitiatedDistroID)
 {
-    UNREFERENCED_PARAMETER(LxInstanceID); // For future use in Hyper-V VM Mode
-
     BOOL bRes;
     NTSTATUS Status;
-    HANDLE EventHandle, ProcHandle, ServerHandleDup, hProc = NtCurrentProcess();
-    HANDLE HeapHandle = RtlGetProcessHeap();
+    HANDLE hProc = NtCurrentProcess(), ServerHandleDup;
 
-    // Create an event to synchronize with wslhost.exe process
-    Status = NtCreateEvent(&EventHandle,
-                           EVENT_ALL_ACCESS,
-                           NULL,
-                           SynchronizationEvent,
-                           FALSE);
-    LogStatus(Status, L"NtCreateEvent");
+    bRes = SetHandleInformation(ServerHandle,
+                                HANDLE_FLAG_INHERIT,
+                                HANDLE_FLAG_INHERIT);
 
-    bRes = SetHandleInformation(EventHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-    bRes = SetHandleInformation(ServerHandle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    Status = NtDuplicateObject(hProc, ServerHandle,
+                               hProc, &ServerHandleDup,
+                               0, 0, DUPLICATE_SAME_ACCESS);
 
-    Status = NtDuplicateObject(hProc, hProc, hProc, &ProcHandle, 0, OBJ_INHERIT, DUPLICATE_SAME_ACCESS);
-    Status = NtDuplicateObject(hProc, ServerHandle, hProc, &ServerHandleDup, 0, 0, DUPLICATE_SAME_ACCESS);
-
-    // Connect to LxssMessagePort for Windows interopt
+    /**
+    * Create a thread pool which waits for ClientHandle from LxssMessagePort
+    * upon executing any Windows binary through init
+    **/
     PTP_WORK WorkReturn;
     Status = TpAllocWork(&WorkReturn, CreateProcessWorker, ServerHandleDup, NULL);
     LogStatus(Status, L"CreateProcessWorker TpAllocWork");
     TpPostWork(WorkReturn);
 
-    // Configure all the required handles for wslhost.exe process
-    size_t AttrbSize;
-    LPPROC_THREAD_ATTRIBUTE_LIST AttrbList = NULL;
-    bRes = InitializeProcThreadAttributeList(NULL, 1, 0, &AttrbSize);
-    AttrbList = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, AttrbSize);
-    bRes = InitializeProcThreadAttributeList(AttrbList, 1, 0, &AttrbSize);
-
-    HANDLE Value[3];
-    Value[0] = ServerHandle;
-    Value[1] = EventHandle;
-    Value[2] = ProcHandle;
-
-    if (bRes)
-        bRes = UpdateProcThreadAttribute(AttrbList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, //0x20002u
-                                         Value, sizeof Value, NULL, NULL);
-
-    //
-    // Create required commandline for WslHost process
-    // Format: WslHost.exe [CurrentDistroID] [ServerHandle] [EventHandle] [ProcessHandle] [LxInstanceId]
-    //
-    wchar_t ProgramName[MAX_PATH], CommandLine[MAX_PATH];
-    ExpandEnvironmentStringsW(L"%WINDIR%\\System32\\lxss\\wslhost.exe", ProgramName, MAX_PATH);
-
-    UNICODE_STRING CurrentDistroIDstring;
-    RtlStringFromGUID(CurrentDistroID, &CurrentDistroIDstring);
-
-    // Testing: Replace WslHost.exe with custom WslReverseHost.exe
-#ifdef _DEBUG
-    RtlZeroMemory(ProgramName, sizeof ProgramName);
-    wcscpy_s(ProgramName, MAX_PATH, L"WslReverseHost.exe");
-#endif
-
-    _snwprintf_s(CommandLine,
-                 MAX_PATH,
-                 MAX_PATH,
-                 L"%ls %ls %ld %ld %ld",
-                 ProgramName,
-                 CurrentDistroIDstring.Buffer,
-                 ToULong(ServerHandle),
-                 ToULong(EventHandle),
-                 ToULong(ProcHandle));
-
-    PROCESS_INFORMATION ProcInfo;
-    STARTUPINFOEXW SInfoEx;
-    RtlZeroMemory(&SInfoEx, sizeof SInfoEx);
-
-    SInfoEx.StartupInfo.cb = sizeof SInfoEx;
-    SInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    SInfoEx.StartupInfo.lpDesktop = L"winsta0\\default";
-    SInfoEx.StartupInfo.wShowWindow = SW_SHOWMINNOACTIVE;
-    SInfoEx.lpAttributeList = AttrbList;
-
-    // bInheritHandles must be TRUE for wslhost.exe
-    bRes = CreateProcessW(NULL,
-                          CommandLine,
-                          NULL,
-                          NULL,
-                          TRUE,
-                          EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NEW_CONSOLE,
-                          NULL,
-                          NULL,
-                          &SInfoEx.StartupInfo,
-                          &ProcInfo);
-
-    if (bRes)
-    {
-        wprintf(L"[+] BackendHost: \n\t CommandLine: %ls\n\t"
-                L" ProcessId: %lu \n\t ProcessHandle: 0x%p \n\t ThreadHandle: 0x%p\n",
-                CommandLine,
-                ProcInfo.dwProcessId, ProcInfo.hProcess, ProcInfo.hThread);
-
-        HANDLE Handles[2];
-        Handles[0] = ProcInfo.hProcess;
-        Handles[1] = EventHandle;
-
-        Status = NtWaitForMultipleObjects(ARRAY_SIZE(Handles), Handles, WaitAny, FALSE, NULL);
-    }
-    else
-        Log(RtlGetLastWin32Error(), L"CreateProcessW");
-
-    // Cleanup
-    RtlFreeUnicodeString(&CurrentDistroIDstring);
-    RtlFreeHeap(HeapHandle, 0, AttrbList);
-    NtClose(EventHandle);
-    NtClose(ProcHandle);
-    NtClose(ProcInfo.hProcess);
-    NtClose(ProcInfo.hThread);
+    /* Execute the backend host without LxInstanceID aka. WSL1 */
+    bRes = SpawnWslHost(ServerHandle, InitiatedDistroID, NULL);
     return bRes;
 }
 
@@ -260,10 +169,9 @@ CreateLxProcess(ILxssUserSession* wslSession,
                 PWSTR LxssUserName)
 {
     HRESULT hRes;
-    HANDLE LxProcessHandle = NULL, ServerHandle = NULL;
+    HANDLE LxProcessHandle, ServerHandle;
     GUID InitiatedDistroID, LxInstanceID;
-    SOCKET s_in, s_out, s_err;
-    SOCKET IpcServerSocket;
+    SOCKET SockIn, SockOut, SockErr, ServerSocket;
     HANDLE HeapHandle = RtlGetProcessHeap();
 
     // Console Window handle of current process (if any)
@@ -287,7 +195,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
 
     // Prepare environments
     ULONG nSize = ExpandEnvironmentStringsW(L"%PATH%", NULL, 0);
-    PWSTR PathVariable = RtlAllocateHeap(HeapHandle, HEAP_ZERO_MEMORY, nSize * sizeof(wchar_t));
+    PWSTR PathVariable = RtlAllocateHeap(HeapHandle, 0, nSize * sizeof(wchar_t));
     ExpandEnvironmentStringsW(L"%PATH%", PathVariable, nSize);
 
     // Set console size from screen buffer co-ordinates
@@ -319,12 +227,13 @@ CreateLxProcess(ILxssUserSession* wslSession,
         &LxInstanceID,
         &LxProcessHandle,
         &ServerHandle,
-        &s_in,
-        &s_out,
-        &s_err,
-        &IpcServerSocket);
+        &SockIn,
+        &SockOut,
+        &SockErr,
+        &ServerSocket);
 
-    if (SUCCEEDED(hRes) && LxProcessHandle != NULL)
+    /* WSL1 */
+    if (SUCCEEDED(hRes) && (LxProcessHandle != NULL && ServerSocket == 0))
     {
         NTSTATUS Status;
         IO_STATUS_BLOCK IoStatusBlock;
@@ -356,12 +265,12 @@ CreateLxProcess(ILxssUserSession* wslSession,
 
         if (SetHandleInformation(LxProcessHandle, HANDLE_FLAG_INHERIT, 0))
         {
+            InitializeInterop(ServerHandle, &InitiatedDistroID);
+
             LXBUS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG WaitForSignalMsg;
             WaitForSignalMsg.TimeOut = INFINITE;
 
-            InitializeInterop(ServerHandle, &InitiatedDistroID, &LxInstanceID);
-
-            // Use the IOCTL to wait on the process to terminate
+            /* Use the IOCTL to wait on the process to terminate */
             Status = NtDeviceIoControlFile(LxProcessHandle,
                                            NULL,
                                            NULL,
@@ -376,8 +285,21 @@ CreateLxProcess(ILxssUserSession* wslSession,
             else
                 LogStatus(Status, L"NtDeviceIoControlFile");
         }
+
+        NtClose(LxProcessHandle);
+        NtClose(ServerHandle);
     }
-    else
+
+    /* WSL2 */
+    if (SUCCEEDED(hRes) && (LxProcessHandle == NULL && ServerSocket != 0))
+    {
+        closesocket(SockIn);
+        closesocket(SockOut);
+        closesocket(SockErr);
+        closesocket(ServerSocket);
+    }
+
+    if (FAILED(hRes))
         LogResult(hRes, L"CreateLxProcess");
 
     // Restore Console mode to previous state
@@ -387,8 +309,5 @@ CreateLxProcess(ILxssUserSession* wslSession,
 
     // Cleanup
     RtlFreeHeap(HeapHandle, 0, PathVariable);
-    NtClose(LxProcessHandle);
-    NtClose(ServerHandle);
-
     return hRes;
 }

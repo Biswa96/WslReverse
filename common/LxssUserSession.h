@@ -175,7 +175,11 @@ struct _ILxssUserSessionVtbl
         _Out_ PULONG DistroCount,
         _Out_ PLXSS_ENUMERATE_INFO* DistroInfo);
 
-    /* PVOID ObjectStublessClient14; */
+    /**
+    * PVOID ObjectStublessClient14;
+    * LxInstanceId is same with HyperV VM ID
+    * LxProcessHandle and ServerHandle are NULL when SOCKETs are not aka. WSL2
+    **/
     HRESULT(STDMETHODCALLTYPE *CreateLxProcess)(
         _In_ ILxssUserSession* wslSession,
         _In_opt_ GUID* DistroId,
