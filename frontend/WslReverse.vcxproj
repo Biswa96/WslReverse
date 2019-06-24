@@ -6,32 +6,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="LxBusServer.c" />
-    <ClCompile Include="GetConhostServerId.c" />
-    <ClCompile Include="CreateLxProcess.c" />
-    <ClCompile Include="CreateProcessAsync.c" />
-    <ClCompile Include="CreateWinProcess.c" />
-    <ClCompile Include="Helpers.c" />
-    <ClCompile Include="wgetopt.c" />
-    <ClCompile Include="WslReverse.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="LxBusServer.h" />
-    <ClInclude Include="GetConhostServerId.h" />
-    <ClInclude Include="CreateLxProcess.h" />
-    <ClInclude Include="CreateProcessAsync.h" />
-    <ClInclude Include="CreateWinProcess.h" />
-    <ClInclude Include="Helpers.h" />
-    <ClInclude Include="LxBus.h" />
-    <ClInclude Include="wgetopt.h" />
-    <ClInclude Include="WinInternal.h" />
-    <ClInclude Include="LxssUserSession.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{85478E9D-DB08-4F02-8C70-EC570DA57304}</ProjectGuid>
-    <RootNamespace>WSLReverse</RootNamespace>
+    <RootNamespace>WslReverse</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -42,7 +20,8 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -51,17 +30,29 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\</OutDir>
+    <IntDir>$(SolutionDir)bin\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>$(SolutionDir)common\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ntdll.lib;Ole32.lib;Shell32.lib;Ws2_32.lib</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>ntdll.lib;ole32.lib;shell32.lib;ws2_32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="WslReverse.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\common\common.vcxproj">
+      <Project>{68672e1c-559b-4772-8cc9-079682669776}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
 </Project>

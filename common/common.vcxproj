@@ -8,13 +8,13 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{34639984-6642-4F06-8160-51476AEA8E04}</ProjectGuid>
-    <RootNamespace>WslReverseHost</RootNamespace>
+    <ProjectGuid>{68672E1C-559B-4772-8CC9-079682669776}</ProjectGuid>
+    <RootNamespace>common</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -36,21 +36,32 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)common\</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4201;4214</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>ntdll.lib;ole32.lib;shell32.lib;ws2_32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="WslReverseHost.c" />
+    <ClCompile Include="CreateLxProcess.c" />
+    <ClCompile Include="CreateProcessAsync.c" />
+    <ClCompile Include="CreateWinProcess.c" />
+    <ClCompile Include="GetConhostServerId.c" />
+    <ClCompile Include="Helpers.c" />
+    <ClCompile Include="LxBusServer.c" />
+    <ClCompile Include="wgetopt.c" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\common\common.vcxproj">
-      <Project>{68672e1c-559b-4772-8cc9-079682669776}</Project>
-    </ProjectReference>
+    <ClInclude Include="CreateLxProcess.h" />
+    <ClInclude Include="CreateProcessAsync.h" />
+    <ClInclude Include="CreateWinProcess.h" />
+    <ClInclude Include="GetConhostServerId.h" />
+    <ClInclude Include="Helpers.h" />
+    <ClInclude Include="LxBus.h" />
+    <ClInclude Include="LxBusServer.h" />
+    <ClInclude Include="LxssUserSession.h" />
+    <ClInclude Include="wgetopt.h" />
+    <ClInclude Include="WinInternal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

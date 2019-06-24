@@ -1,9 +1,10 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
-VisualStudioVersion = 16.0.28803.352
+VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WSLReverse", "src\WSLReverse.vcxproj", "{85478E9D-DB08-4F02-8C70-EC570DA57304}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WslReverse", "frontend\WslReverse.vcxproj", "{85478E9D-DB08-4F02-8C70-EC570DA57304}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{68672E1C-559B-4772-8CC9-079682669776}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WslReverseHost", "backend\WslReverseHost.vcxproj", "{34639984-6642-4F06-8160-51476AEA8E04}"
 EndProject
@@ -14,6 +15,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{85478E9D-DB08-4F02-8C70-EC570DA57304}.Debug|x64.ActiveCfg = Debug|x64
 		{85478E9D-DB08-4F02-8C70-EC570DA57304}.Debug|x64.Build.0 = Debug|x64
+		{68672E1C-559B-4772-8CC9-079682669776}.Debug|x64.ActiveCfg = Debug|x64
+		{68672E1C-559B-4772-8CC9-079682669776}.Debug|x64.Build.0 = Debug|x64
 		{34639984-6642-4F06-8160-51476AEA8E04}.Debug|x64.ActiveCfg = Debug|x64
 		{34639984-6642-4F06-8160-51476AEA8E04}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection

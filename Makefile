@@ -1,7 +1,11 @@
-#Root Makefile for WslReverse project
+# Root Makefile for WslReverse project
 
-exe:
-	cd src ; $(MAKE)
+all:
+	cd common; $(MAKE)
+	cd frontend; $(MAKE)
+	cd backend; $(MAKE)
 
 clean:
-	cd src; $(MAKE) clean
+	rm -rf bin
+
+# END

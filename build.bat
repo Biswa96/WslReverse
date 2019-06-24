@@ -1,27 +1,50 @@
+:: batch file to compile whole project
+:: some helful links:
+:: https://stackoverflow.com/questions/50848318/
+
+
 @echo off
-::Set Environments for X86_64 build
+
+:: set environments for X86_64 build
 cd %~dp0
 call "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 where cl.exe link.exe
 
-::Set Environment Variables
-set NAME=WslReverse.exe
-set BINDIR=bin
-set SRCDIR=src
-set CFLAGS=/c /nologo /O1 /MD /W4 /Fo%BINDIR%\\
+:: disable warnings
+set CCOPT=/wd"4201" /wd"4214"
+
+:: set environment vriables
+set BIN=bin
+set CFLAGS=/c /nologo /Os /MD /W4
 set LFLAGS=/nologo /MACHINE:X64
 set LIBS=ntdll.lib ole32.lib shell32.lib ws2_32.lib
 
-::Disable warnings
-set CCOPT=/wd"4201" /wd"4214"
+:: cleanup
+rd /s /q %BIN%
+mkdir %BIN%
 
-::Build
-rd /s /q %BINDIR%
-mkdir %BINDIR%
-cl.exe %CFLAGS% %CCOPT% %SRCDIR%\*.c
-link.exe %LFLAGS% %LIBS% %BINDIR%\*.obj /OUT:%BINDIR%\%NAME%
+:: #1 build common static library
+set SRC=common
 
-dir /B %BINDIR%\*.exe
+mkdir %BIN%\%SRC%
+cl %CFLAGS% %CCOPT% /Fo%BIN%\%SRC%\\ %SRC%\*.c
+link /lib %LFLAGS% %BIN%\%SRC%\*.obj /OUT:%BIN%\%SRC%.lib
+
+:: #2 build frontend executable
+set SRC=frontend
+
+mkdir %BIN%\%SRC%
+cl %CFLAGS% %CCOPT% /I"common" /Fo%BIN%\%SRC%\\ %SRC%\WslReverse.c
+link %LFLAGS% %LIBS% %BIN%\common.lib %BIN%\%SRC%\*.obj /OUT:%BIN%\WslReverse.exe
+
+:: #3 build backend executable
+set SRC=backend
+
+mkdir %BIN%\%SRC%
+cl %CFLAGS% %CCOPT% /I"common" /Fo%BIN%\%SRC%\\ %SRC%\WslReverseHost.c
+link %LFLAGS% %LIBS% %BIN%\common.lib %BIN%\%SRC%\*.obj /OUT:%BIN%\WslReverseHost.exe
+
+dir /B %BIN%\*.exe
 pause
 exit /b
 
