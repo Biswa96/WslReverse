@@ -15,7 +15,7 @@ there will be `LxBusClient` file in `bin` folder (with WslReverse.exe).
 
 ## How to use
 
-* Import `Lxss_Service.REG` registry from Others folder, then reboot PC. 
+* Import [`LxCoreFlags.REG`](../Others/LxCoreFlags.REG) registry from Others folder, then reboot PC. 
 * Run `WslReverse.exe --bus Distro_Name` command as administrator. 
 
 * Open another Command Prompt, type `WslReverse.exe --run Distro_Name`,

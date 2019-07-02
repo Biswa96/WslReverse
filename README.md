@@ -24,7 +24,7 @@ cloned folder and run `make` command. The binaries will be in `/bin` folder.
 Download the binary from [Release page], no installation steps are required.
 This project only shows the hidden COM methods which may change in future
 Windows version. The COM vtable, used in this project, is according to
-_latest Windows 10 20H1 Insider Preview_, that is build 18912 and above.
+_latest Windows 10 20H1 Insider Preview_, that is build 18917 and above.
 Here are the options of WslReverse: 
 
 [Release page]: https://github.com/Biswa96/WslReverse/releases
@@ -50,30 +50,38 @@ Options:
   -u, --uninstall    [Distro]      Uninstall distribution.
 ```
 
+
 ## Project layout
 
-The project layout of source files according to their dependencies:
+Most of the definitions are in `LxBus.h` and `WinInternal.h` header files.
+The project layout of source files:
 
-```
-src\
-    |
-    +-- LxBus: Required IOCTLs and associated structures
-    +-- WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS and PEB structures
-    +-- CreateWinProcess: Create Windows process with LxBus server
-    +-- CreateProcessAsync: Create worker thread for LxBus IPC mechanism
-        |
-        |   +-- Helpers: Helping functions to log return values and more
-        |   +-- GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
-        |   +-- LxssUserSession: LxssUserSession COM interface
-        |   |
-        +-- CreateLxProcess: Run WSL pico processes
-            |
-            |   +-- LxBusServer: Send/Receive various types of messages with LxBus Server 
-            |   |
-            |   |   +-- wgetopt: Converted from Cygwin getopt file for wide characters
-            |   |   |
-            +-- WslReverse: Main function with option processing
-```
+* common:
+
+  - CreateLxProcess: Run WSL pico processes
+  - CreateProcessAsync: Create worker thread for LxBus IPC mechanism
+  - CreateWinProcess: Create Windows process with LxBus server
+  - GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
+  - Helpers: Helping functions to log return values and more
+  - LxBus: Required IOCTLs and associated structures
+  - LxBusServer: Send/Receive various types of messages with LxBus Server
+  - LxssUserSession: LxssUserSession COM interface
+  - SpawnWslHost: Compose backend process command line and create process
+  - wgetopt: Converted from Cygwin getopt file for wide characters
+  - WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS and PEB structures
+
+* frontend:
+
+  - WslReverse: Main function with option processing
+
+* backend:
+
+  - WslReverseHost: Main function for backend processing
+
+* linux_files:
+
+  - LxBusClient: Client process which connect to LxBus server in forntend
+
 
 ## Take a long ride with :minibus:
 
@@ -102,6 +110,32 @@ IPC mechanism. What interesting thing do you want to do with LxBus? :yum:
 
 [@34min]: https://youtu.be/36Ykla27FIo?t=2077
 
+
+## Trace Syscalls
+
+This works with **WSL1 only** because LxCore does not involve _directly_ with WSL2.
+First import [LxCoreFlags registry file](Others/LxCoreFlags.REG). Then enable
+local kernel mode debugging with these two command as administrator and reboot PC.
+
+    bcdedit /debug on
+    bcdedit /dbgsettings local
+
+This enables some DWORD registry flags. Behind the scene, LxCore _mainly_ checks if
+`PrintSysLevel` and `PrintLogLevel` are both zero and `TraceLastSyscall` is present.
+For the same host machine, use [DebugView] as administrator or use KD for VM.
+
+<img src=Others/LxCoreSyscalls.PNG>
+
+Run any WSL1 distribution and see the logs and every syscalls and dmesg.
+The functions behind these logs format are like this:
+
+    DbgPrintEx(0, 0, "LX: (%p, %p) %s", PEPROCESS, PKTHREAD, Syscall);
+    DbgPrintEx(0, 0, "LX: (%p, %p) /dev/kmsg: %Z", PEPROCESS, PKTHREAD, Version);
+    DbgPrintEx(0, 0, "LX: (%p, %p) /dev/log: %d: %Z: %Z\n", PEPROCESS, PKTHREAD, x, y, z);
+    DbgPrintEx(0, 0, "LX: (%p, %p) (%Z) %s\n", PEPROCESS, PKTHREAD, Command, LxCoreFunction);
+
+[DebugView]: https://docs.microsoft.com/en-us/sysinternals/downloads/debugview
+
 ## Trace Events
 
 * List of Event Providers and associated GUID:
@@ -110,9 +144,9 @@ IPC mechanism. What interesting thing do you want to do with LxBus? :yum:
 |:-------------------------------------:|:--------------------------------------:|:----------------:|
 | Microsoft.Windows.Lxss.Manager        | {B99CDB5A-039C-5046-E672-1A0DE0A40211} | LxssManager.dll  |
 | Microsoft.Windows.Lxss.Heartbeat      | {0451AB4F-F74D-4008-B491-EB2E5F5D8B89} | LxssManager.dll  |
-| Microsoft.Windows.Subsystem.Adss      | {754E4536-6735-4194-BE81-1374BD2E9B0D} | LxCore.sys       |
 | Microsoft.Windows.Subsystem.LxCore    | {0CD1C309-0878-4515-83DB-749843B3F5C9} | LxCore.sys       |
-| Microsoft.Windows.Subsystem.Lxss      | {D90B9468-67F0-5B3B-42CC-82AC81FFD960} | WslHost.exe      |
+| Microsoft.Windows.Subsystem.Lxss      | {D90B9468-67F0-5B3B-42CC-82AC81FFD960} | Wsl.exe          |
+
 
 ## Acknowledgments
 
@@ -128,19 +162,12 @@ This project uses some definitions and data types from followings. Thanks to:
 [GPLv3 License]: https://github.com/processhacker/processhacker/blob/master/LICENSE.txt
 
 
-## Contributing
-
-Need ideas to connect WSL with any other terminals like [mintty] without any
-ELF backend or any extra modules which creates extra processes. 
-
-[mintty]: https://github.com/mintty/mintty
-
-## License 
+## License
 
 WslReverse is licensed under the GNU General Public License v3.
 A full copy of the license is provided in [LICENSE](LICENSE).
 
-    WslReverse -- Use COM interface between WSL and Lxss Manager Service
+    WslReverse -- Experiments with COM interface and LxBus IPC mechanism in WSL.
     Copyright (c) 2018-19 Biswapriyo Nath
     
     This program is free software: you can redistribute it and/or modify
