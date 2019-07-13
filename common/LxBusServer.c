@@ -41,13 +41,12 @@ LxBusServer(ILxssUserSession* wslSession,
     //
     // 1# Register a LxBus server
     //
-    hRes = wslSession->lpVtbl->RegisterLxBusServer(wslSession, DistroID, LXBUS_SERVER_NAME, &ServerHandle);
+    hRes = wslSession->lpVtbl->RegisterLxBusServer(
+           wslSession, DistroID, LXBUS_SERVER_NAME, &ServerHandle);
 
     if (FAILED(hRes))
     {
-        LogResult(hRes, L"RegisterLxBusServer");
-        if (hRes == E_ACCESSDENIED)
-            wprintf(L"Run this program as administrator...\n");
+        Log(hRes, L"RegisterLxBusServer");
         return hRes;
     }
 

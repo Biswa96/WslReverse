@@ -74,12 +74,14 @@ struct _ILxssUserSessionVtbl
 
     /**
     * PVOID ObjectStublessClient4;
+    * If Version is not provided DefaultVersion (REG_DWORD) is used
+    * Version greater than 2 (Two) results invalid parameter
     * Command: "System32/lxss/tools/bsdtar -C /rootfs -x -p --xattrs --no-acls -f -"
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterDistribution)(
         _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
-        _In_ ULONG RegistrationFlags,
+        _In_opt_ ULONG Version,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
         _Out_ GUID* DistroId);
@@ -88,7 +90,7 @@ struct _ILxssUserSessionVtbl
     HRESULT(STDMETHODCALLTYPE *RegisterDistributionFromPipe)(
         _In_ ILxssUserSession* wslSession,
         _In_ PWSTR DistributionName,
-        _In_ ULONG RegistrationFlags,
+        _In_opt_ ULONG Version,
         _In_ HANDLE TarGzFileHandle,
         _In_ PWSTR BasePath,
         _Out_ GUID* DistroId);
@@ -216,7 +218,7 @@ struct _ILxssUserSessionVtbl
     /**
     * PVOID ObjectStublessClient16;
     * Allow only when RootLxBusAccess REG_DWORD enabled
-    * Shows 'element not found' when no LxInstance present
+    * Not for WSL2 i.e. Hyper-V VM
     **/
     HRESULT(STDMETHODCALLTYPE *RegisterLxBusServer)(
         _In_ ILxssUserSession* wslSession,

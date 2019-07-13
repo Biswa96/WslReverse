@@ -231,9 +231,15 @@ int WINAPI main(void)
                     RtlStringFromGUID(&DistroInfo->DistributionID, &GuidString);
 
                     if (DistroInfo->Default)
-                        wprintf(L"%ls : %ls (Default)\n", GuidString.Buffer, DistributionName);
+                    {
+                        wprintf(L"%ls : %ls (Default) (%ld)\n",
+                                GuidString.Buffer, DistributionName, DistroInfo->Version);
+                    }
                     else
-                        wprintf(L"%ls : %ls\n", GuidString.Buffer, DistributionName);
+                    {
+                        wprintf(L"%ls : %ls (%ld)\n",
+                                GuidString.Buffer, DistributionName, DistroInfo->Version);
+                    }
 
                     RtlFreeUnicodeString(&GuidString);
                     DistroInfo = (PLXSS_ENUMERATE_INFO)((PBYTE)DistroInfo + sizeof (*DistroInfo));

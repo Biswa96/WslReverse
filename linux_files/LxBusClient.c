@@ -1,12 +1,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "../src/LxBus.h"
+#include "../common/LxBus.h"
 
 #define INFINITE 0xFFFFFFFF
 #define LXBUS_SERVER_NAME "minibus"
@@ -27,16 +26,13 @@ int main(void)
     ssize_t bytes;
     char Buffer[100];
 
-
-    //
-    // 1# Connect to a LxBus Server
-    //
+    /* 1# open lxss virtual device, root access only */
     lxfd = open("/dev/lxss", O_RDWR);
     Log(lxfd, "open");
     printf("lxfd: %d\n", lxfd);
 
     // Wait for connection from LxBus server infinitely
-    LXBUS_BUS_CLIENT_CONNECT_SERVER_MSG ConnectMsg = { 0 };
+    LXBUS_BUS_CLIENT_CONNECT_SERVER_MSG ConnectMsg;
     ConnectMsg.Timeout = INFINITE;
     ConnectMsg.LxBusServerName = LXBUS_SERVER_NAME;
     ConnectMsg.Flags = LXBUS_CONNECT_WAIT_FOR_SERVER_FLAG;
@@ -46,6 +42,12 @@ int main(void)
     Log(res, "ioctl");
     printf("ServerFd: %d\n", ConnectMsg.ServerHandle);
 
+
+    //
+    // Set the correct file descriptor mode for access
+    //
+    res = fcntl(ConnectMsg.ServerHandle, F_SETFD, O_WRONLY);
+    Log(res, "fcntl");
 
     //
     // 2# Write message to LxBus server
