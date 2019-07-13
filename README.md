@@ -58,7 +58,7 @@ The project layout of source files:
 
 * common:
 
-  - CreateLxProcess: Run WSL pico processes
+  - CreateLxProcess: Run WSL1 pico processes
   - CreateProcessAsync: Create worker thread for LxBus IPC mechanism
   - CreateWinProcess: Create Windows process with LxBus server
   - GetConhostServerId: Shows associated ConHost PID by IOCTL from condrv.sys
@@ -67,6 +67,7 @@ The project layout of source files:
   - LxBusServer: Send/Receive various types of messages with LxBus Server
   - LxssUserSession: LxssUserSession COM interface
   - SpawnWslHost: Compose backend process command line and create process
+  - VmModeWorker: Run WSL2 processes
   - wgetopt: Converted from Cygwin getopt file for wide characters
   - WinInternal: Crafted RTL_USER_PROCESS_PARAMETERS and PEB structures
 

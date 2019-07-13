@@ -5,6 +5,7 @@
 #include "LxssUserSession.h"
 #include "LxBus.h"
 #include "SpawnWslHost.h"
+#include "VmModeWorker.h"
 #include <stdio.h>
 
 #define DISABLED_INPUT_MODE (ENABLE_INSERT_MODE |\
@@ -232,8 +233,7 @@ CreateLxProcess(ILxssUserSession* wslSession,
         &SockErr,
         &ServerSocket);
 
-    /* WSL1 */
-    if (SUCCEEDED(hRes) && (LxProcessHandle != NULL && ServerSocket == 0))
+    if (SUCCEEDED(hRes) && (LxProcessHandle != NULL && ServerSocket == 0)) /* WSL1 */
     {
         NTSTATUS Status;
         IO_STATUS_BLOCK IoStatusBlock;
@@ -289,18 +289,16 @@ CreateLxProcess(ILxssUserSession* wslSession,
         NtClose(LxProcessHandle);
         NtClose(ServerHandle);
     }
-
-    /* WSL2 */
-    if (SUCCEEDED(hRes) && (LxProcessHandle == NULL && ServerSocket != 0))
+    else if (SUCCEEDED(hRes) && (LxProcessHandle == NULL && ServerSocket != 0)) /* WSL2 */
     {
+        VmModeWorker(SockIn, SockOut, SockErr, ServerSocket, &StdHandles);
         closesocket(SockIn);
         closesocket(SockOut);
         closesocket(SockErr);
         closesocket(ServerSocket);
     }
-
-    if (FAILED(hRes))
-        LogResult(hRes, L"CreateLxProcess");
+    else
+        Log(hRes, L"CreateLxProcess");
 
     // Restore Console mode to previous state
     SetConsoleMode(CommIo.hIn, CommIo.InMode);
