@@ -83,6 +83,10 @@ The project layout of source files:
 
   - LxBusClient: Client process which connect to LxBus server in forntend
 
+* wslcli:
+
+  - WslClient: WslClient COM interface for wsl.exe, bash.exe, wslconfig.exe and wslhost.exe.
+
 
 ## Take a long ride with :minibus:
 
