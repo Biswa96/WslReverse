@@ -7,7 +7,7 @@
 #ifndef WSLCLIENT_H
 #define WSLCLIENT_H
 
- /* {615A13BE-241D-48B1-89B0-8E1D40FFD287} */
+/* {615A13BE-241D-48B1-89B0-8E1D40FFD287} */
 static const GUID CLSID_WslClient = {
     0x615A13BE,
     0x241D,
@@ -26,7 +26,8 @@ typedef enum _WslClientEntry
     WSL_CLENT_ENTRY_BASH = 0,
     WSL_CLENT_ENTRY_WSL = 1,
     WSL_CLENT_ENTRY_WSLCONFIG = 2,
-    /* WSL_CLENT_ENTRY_WSLHOST = 3, Removed from Win Build 20201 */
+    WSL_CLENT_ENTRY_WSLHOST = 3, /* Removed from Win Build 20201 */
+    WSL_CLIENT_ENTRY_WSL_GRAPHICS = 3, /* Added in Win Build 21332 */
 } WslClientEntry;
 
 typedef struct _IWslClient IWslClient;
