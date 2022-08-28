@@ -1,0 +1,471 @@
+import "unknwn.idl";
+
+// Workaround for this IDL file only
+cpp_quote("#if 0")
+typedef UINT_PTR SOCKET;
+cpp_quote("#endif")
+
+typedef enum _LXSS_DISTRIBUTION_STATES {
+    Stopped = 1,
+    Running,
+    Installing,
+    Uninstalling,
+    Converting
+} LXSS_DISTRIBUTION_STATES;
+
+typedef enum _LXSS_INSTANCE_FLAGS {
+    LXSS_INSTANCE_ENSURE_CASE_SENSITIVITY = 1,
+    LXSS_INSTANCE_USE_EXISTING_INSTANCE = 2,
+} LXSS_INSTANCE_FLAGS;
+
+typedef struct _LXSS_ENUMERATE_INFO {
+    GUID DistributionID;
+    LXSS_DISTRIBUTION_STATES State;
+    ULONG Version;
+    ULONG Default;
+} LXSS_ENUMERATE_INFO, *PLXSS_ENUMERATE_INFO;
+
+typedef enum _WSL_DISTRIBUTION_FLAGS {
+    WSL_DISTRIBUTION_FLAGS_NONE = 0,
+    WSL_DISTRIBUTION_FLAGS_ENABLE_INTEROP = 1,
+    WSL_DISTRIBUTION_FLAGS_APPEND_NT_PATH = 2,
+    WSL_DISTRIBUTION_FLAGS_ENABLE_DRIVE_MOUNTING = 4,
+    WSL_DISTRIBUTION_FLAGS_DEFAULT = 7,
+    WSL_DISTRIBUTION_FLAGS_WSL2 = 8,
+} WSL_DISTRIBUTION_FLAGS;
+
+typedef struct _LXSS_STD_HANDLE {
+    ULONG Handle;
+    ULONG Pipe;
+} LXSS_STD_HANDLE, *PLXSS_STD_HANDLE;
+
+typedef struct _LXSS_STD_HANDLES {
+    LXSS_STD_HANDLE StdIn;
+    LXSS_STD_HANDLE StdOut;
+    LXSS_STD_HANDLE StdErr;
+} LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
+
+// Build 18362
+[
+    uuid(536A6BCF-FE04-41D9-B978-DCACA9A9B5B9),
+    object,
+    local,
+    pointer_default(unique)
+]
+interface ILxssUserSession1 : IUnknown
+{
+    HRESULT CreateInstance(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LXSS_INSTANCE_FLAGS InstanceFlags);
+
+    HRESULT RegisterDistribution(
+        [in] LPWSTR DistributionName,
+        [in] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [in] REFGUID DistroId);
+
+    HRESULT RegisterDistributionPipe(
+        [in] LPWSTR DistributionName,
+        [in] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [in] REFGUID DistroId);
+
+    HRESULT GetDistributionId(
+        [in] LPCWSTR DistroName,
+        [in] ULONG EnableEnumerate,
+        [out] REFGUID DistroId);
+
+    HRESULT TerminateDistribution(
+        [in, optional] REFGUID DistroId);
+
+    HRESULT UnregisterDistribution(
+        [in] REFGUID DistroId);
+
+    HRESULT ConfigureDistribution(
+        [in] REFGUID DistroId,
+        [in, optional] LPCSTR KernelCommandLine,
+        [in, optional] ULONG DefaultUid,
+        [in, optional] ULONG EnvironmentCount,
+        [in, optional] LPCSTR *DefaultEnvironment,
+        [in] ULONG Flags);
+
+    HRESULT GetDistributionConfiguration(
+        [in] REFGUID DistroId,
+        [out] LPWSTR *DistributionName,
+        [out] ULONG *Version,
+        [out] LPWSTR *BasePath,
+        [out] LPSTR *KernelCommandLine,
+        [out] ULONG *DefaultUid,
+        [out] ULONG *EnvironmentCount,
+        [out] LPSTR **DefaultEnvironment,
+        [out] ULONG *Flags);
+
+    HRESULT GetDefaultDistribution(
+        [out] REFGUID DistroId);
+
+    HRESULT SetDefaultDistribution(
+        [in] REFGUID DistroId);
+
+    HRESULT EnumerateDistributions(
+        [in] BOOLEAN Flags,
+        [out] ULONG *DistroCount,
+        [out] GUID **DistroIdList);
+
+    HRESULT CreateLxProcess(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LPSTR CommandLine,
+        [in, optional] ULONG ArgumentCount,
+        [in, optional] LPSTR *Arguments,
+        [in, optional] LPWSTR CurrentDirectory,
+        [in, optional] LPWSTR SharedEnvironment,
+        [in, optional] LPWSTR ProcessEnvironment,
+        [in, optional] SIZE_T EnvironmentLength,
+        [in, optional] LPWSTR LinuxUserName,
+        [in, optional] USHORT WindowWidthX,
+        [in, optional] USHORT WindowHeightY,
+        [in] ULONG ConsoleHandle,
+        [in] PLXSS_STD_HANDLES StdHandles,
+        [out] REFGUID InitiatedDistroId,
+        [out] REFGUID LxInstanceId,
+        [out] HANDLE *LxProcessHandle,
+        [out] HANDLE *ServerHandle,
+        [out] PVOID InputSocket,
+        [out] PVOID OutputSocket,
+        [out] PVOID ErrorSocket,
+        [out] PVOID ServerSocket);
+
+    HRESULT BeginUpgradeDistribution(
+        [in] REFGUID DistroId,
+        [out] ULONG *Version,
+        [out] LPWSTR *BasePath);
+
+    HRESULT FinishUpgradeDistribution(
+        [in] REFGUID DistroId,
+        [in] ULONG Version);
+
+    HRESULT DisableVmMode(
+        [in] REFGUID DistroId);
+
+    HRESULT EnableVmMode(
+        [in] REFGUID DistroId);
+
+    HRESULT RegisterLxBusServer(
+        [in] REFGUID DistroId,
+        [in] LPSTR LxBusServerName,
+        [out] HANDLE *ServerHandle);
+
+    HRESULT ExportDistribution(
+        [in] REFGUID DistroId,
+        [in] HANDLE FileHandle);
+
+    HRESULT ExportDistributionPipe(
+        [in] REFGUID DistroId,
+        [in] HANDLE FileHandle);
+}
+
+// Build 19041
+[
+    uuid(536A6BCF-FE04-41D9-B978-DCACA9A9B5B9),
+    object,
+    local,
+    pointer_default(unique)
+]
+interface ILxssUserSession2 : IUnknown
+{
+    // PVOID ObjectStublessClient3;
+    // Create new LxssInstance or get the running one.
+    // If DistroId is not present get default distribution.
+    HRESULT CreateInstance(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LXSS_INSTANCE_FLAGS InstanceFlags);
+
+    // PVOID ObjectStublessClient4;
+    // If Version is absent, read DefaultVersion dword registry value.
+    // Version greater than 2 results invalid parameter.
+    HRESULT RegisterDistribution(
+        [in] LPWSTR DistributionName,
+        [in, optional] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [out] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient5;
+    HRESULT RegisterDistributionPipe(
+        [in] LPWSTR DistributionName,
+        [in, optional] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [out] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient6;
+    HRESULT GetDistributionId(
+        [in] LPCWSTR DistroName,
+        [in] BOOL EnableEnumerate,
+        [out] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient7;
+    // If DistroId is not present get default distribution.
+    HRESULT TerminateDistribution(
+        [in, optional] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient8;
+    // Write State registry value as FOUR means uninstalling.
+    // Reset DefaultDistribution registry if default one is uninstalled.
+    HRESULT UnregisterDistribution(
+        [in] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient9;
+    // If DistroId is not present get default distribution.
+    // DefaultUid should be positive value.
+    // Writes Environment variables only if EnvironmentCount present.
+    // Flags should be less than or equal to 15.
+    HRESULT ConfigureDistribution(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LPCSTR KernelCommandLine,
+        [in, optional] ULONG DefaultUid,
+        [in, optional] ULONG EnvironmentCount,
+        [in, optional] LPCSTR *DefaultEnvironment,
+        [in, optional] ULONG Flags);
+
+    // PVOID ObjectStublessClient10;
+    // If DistroId is not present get default distribution.
+    // Free DistributionName, BasePath, KernelCommandLine,
+    // each string in DefaultEnvironment array and the array itself
+    HRESULT GetDistributionConfiguration(
+        [in, optional] REFGUID DistroId,
+        [out] LPWSTR *DistributionName,
+        [out] ULONG *Version,
+        [out] LPWSTR *BasePath,
+        [out] LPSTR *KernelCommandLine,
+        [out] ULONG *DefaultUid,
+        [out] ULONG *EnvironmentCount,
+        [out] LPSTR **DefaultEnvironment,
+        [out] ULONG *Flags);
+
+    // PVOID ObjectStublessClient11;
+    // Query DefaultDistribution registry string.
+    HRESULT GetDefaultDistribution(
+        [out] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient12;
+    // If distro is not in the middle of installation or uninstallation or conversion.
+    // i.e. Query State registry value should be 1 or return error.
+    // Write DefaultDistribution registry string.
+    HRESULT SetDefaultDistribution(
+        [in] REFGUID DistroId);
+
+    // PVOID ObjectStublessClient13;
+    // Returns array of LXSS_ENUMERATE_INFO structures.
+    // Free array with CoTaskMemFree.
+    HRESULT EnumerateDistributions(
+        [out] ULONG *DistroCount,
+        [out] PLXSS_ENUMERATE_INFO *DistroInfo);
+
+    // PVOID ObjectStublessClient14;
+    // If DistroId is not present get default distribution.
+    // LxInstanceId is same with HyperV VM ID.
+    // LxProcessHandle and ServerHandle are NULL for WSL2.
+    // I/O sockets are NULL for WSL1.
+    HRESULT CreateLxProcess(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LPSTR CommandLine,
+        [in, optional] ULONG ArgumentCount,
+        [in, optional] LPSTR *Arguments,
+        [in, optional] LPWSTR CurrentDirectory,
+        [in, optional] LPWSTR SharedEnvironment,
+        [in, optional] LPWSTR ProcessEnvironment,
+        [in, optional] SIZE_T EnvironmentLength,
+        [in, optional] LPWSTR LinuxUserName,
+        [in, optional] USHORT WindowWidthX,
+        [in, optional] USHORT WindowHeightY,
+        [in] ULONG ConsoleHandle,
+        [in] PLXSS_STD_HANDLES StdHandles,
+        [out] REFGUID InitiatedDistroId,
+        [out] REFGUID LxInstanceId,
+        [out] HANDLE *LxProcessHandle,
+        [out] HANDLE *ServerHandle,
+        [out] SOCKET *InputSocket,
+        [out] SOCKET *OutputSocket,
+        [out] SOCKET *ErrorSocket,
+        [out] SOCKET *ServerSocket);
+
+    // PVOID ObjectStublessClient15;
+    // Version must be 1 or 2.
+    // Free Result with CoTaskMemFree.
+    HRESULT SetVersion(
+        [in] REFGUID DistroId,
+        [in] ULONG Version,
+        [out] LPSTR *Result);
+
+    // PVOID ObjectStublessClient16;
+    // Allow only when RootLxBusAccess REG_DWORD enabled.
+    // If DistroId is not present get default distribution.
+    // Need to call CreateInstance before this because
+    // this uses existing instance i.e. Flag 2 in CreateInstance.
+    HRESULT RegisterLxBusServer(
+        [in, optional] REFGUID DistroId,
+        [in] LPSTR LxBusServerName,
+        [out] HANDLE *ServerHandle);
+
+    // PVOID ObjectStublessClient17;
+    // If DistroId is not present get default distribution.
+    // Free Result with CoTaskMemFree.
+    HRESULT ExportDistribution(
+        [in, optional] REFGUID DistroId,
+        [in] HANDLE FileHandle,
+        [out] LPSTR *Result);
+
+    // PVOID ObjectStublessClient18;
+    HRESULT ExportDistributionPipe(
+        [in, optional] REFGUID DistroId,
+        [in] HANDLE FileHandle,
+        [out] LPSTR *Result);
+
+    // PVOID ObjectStublessClient19;
+    HRESULT Shutdown();
+}
+
+// Build 22000
+[
+    uuid(536A6BCF-FE04-41D9-B978-DCACA9A9B5B9),
+    object,
+    local,
+    pointer_default(unique)
+]
+interface ILxssUserSession3 : IUnknown
+{
+    HRESULT CreateInstance(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LXSS_INSTANCE_FLAGS InstanceFlags);
+
+    HRESULT RegisterDistribution(
+        [in] LPWSTR DistributionName,
+        [in, optional] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [out] REFGUID DistroId);
+
+    HRESULT RegisterDistributionPipe(
+        [in] LPWSTR DistributionName,
+        [in, optional] ULONG Version,
+        [in] HANDLE TarGzFileHandle,
+        [in] LPWSTR BasePath,
+        [out] REFGUID DistroId);
+
+    HRESULT GetDistributionId(
+        [in] LPCWSTR DistroName,
+        [in] BOOL EnableEnumerate,
+        [out] REFGUID DistroId);
+
+    HRESULT TerminateDistribution(
+        [in, optional] REFGUID DistroId);
+
+    HRESULT UnregisterDistribution(
+        [in] REFGUID DistroId);
+
+    HRESULT ConfigureDistribution(
+        [in, optional] REFGUID DistroId,
+        [in, optional] ULONG DefaultUid,
+        [in, optional] ULONG Flags);
+
+    // Build 21313 Co: Removed BasePath and KernelCommandLine.
+    HRESULT GetDistributionConfiguration(
+        [in, optional] REFGUID DistroId,
+        [out] LPWSTR *DistributionName,
+        [out] ULONG *Version,
+        [out] ULONG *DefaultUid,
+        [out] ULONG *EnvironmentCount,
+        [out] LPSTR **DefaultEnvironment,
+        [out] ULONG *Flags);
+
+    HRESULT GetDefaultDistribution(
+        [out] REFGUID DistroId);
+
+    HRESULT SetDefaultDistribution(
+        [in] REFGUID DistroId);
+
+    HRESULT EnumerateDistributions(
+        [out] ULONG *DistroCount,
+        [out] PLXSS_ENUMERATE_INFO *DistroInfo);
+
+    // Build 20211 Fe: ULONG InstanceFlags is added.
+    HRESULT CreateLxProcess(
+        [in, optional] REFGUID DistroId,
+        [in, optional] LPSTR CommandLine,
+        [in, optional] ULONG ArgumentCount,
+        [in, optional] LPSTR *Arguments,
+        [in, optional] LPWSTR CurrentDirectory,
+        [in, optional] LPWSTR SharedEnvironment,
+        [in, optional] LPWSTR ProcessEnvironment,
+        [in, optional] SIZE_T EnvironmentLength,
+        [in, optional] LPWSTR LinuxUserName,
+        [in, optional] USHORT WindowWidthX,
+        [in, optional] USHORT WindowHeightY,
+        [in] ULONG ConsoleHandle,
+        [in] PLXSS_STD_HANDLES StdHandles,
+        [in, optional] LXSS_INSTANCE_FLAGS InstanceFlags,
+        [out] REFGUID InitiatedDistroId,
+        [out] REFGUID LxInstanceId,
+        [out] HANDLE *LxProcessHandle,
+        [out] HANDLE *ServerHandle,
+        [out] PVOID InputSocket,
+        [out] PVOID OutputSocket,
+        [out] PVOID ErrorSocket,
+        [out] PVOID ServerSocket);
+
+    HRESULT SetVersion(
+        [in] REFGUID DistroId,
+        [in] ULONG Version,
+        [out] LPSTR *Result);
+
+    HRESULT RegisterLxBusServer(
+        [in, optional] REFGUID DistroId,
+        [in] LPSTR LxBusServerName,
+        [out] HANDLE *ServerHandle);
+
+    HRESULT ExportDistribution(
+        [in, optional] REFGUID DistroId,
+        [in] HANDLE FileHandle,
+        [out] LPSTR *Result);
+
+    HRESULT ExportDistributionPipe(
+        [in, optional] REFGUID DistroId,
+        [in] HANDLE FileHandle,
+        [out] LPSTR *Result);
+
+    HRESULT AttachPassThroughDisk(
+        LPWSTR DiskPath);
+
+    HRESULT DetachPassThroughDisk(
+        LPWSTR DiskPath,
+        ULONG *MountReturn,
+        ULONG *MountStaus);
+
+    HRESULT MountDisk(
+        LPWSTR a,
+        ULONG b,
+        LPWSTR c,
+        LPWSTR d,
+        ULONG *e,
+        ULONG *f,
+        LPWSTR *g);
+
+    HRESULT Shutdown();
+
+    HRESULT CreateVm(
+        LPWSTR a,
+        LPWSTR b,
+        ULONG c,
+        LPWSTR *d,
+        REFGUID e);
+}
+
+[uuid(4F476546-B412-4579-B64C-123DF331E3D6)]
+coclass LxssUserSession
+{
+    interface ILxssUserSession1;
+    interface ILxssUserSession2;
+    interface ILxssUserSession3;
+}
